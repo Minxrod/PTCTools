@@ -1,10 +1,11 @@
 import qrcode
 import zlib
 from math import ceil
+import PIL
 from PIL import Image, ImageDraw, ImageFont
 
 from ptc_file import PTCFile, to_bytes, md5
-from ptc_file import PRG_TYPE, MEM_TYPE
+from ptc_file import PRG_TYPE, MEM_TYPE, CHR_TYPE, SCR_TYPE, COL_TYPE, GRP_TYPE
 
 
 CR=ord('\r')
@@ -20,22 +21,16 @@ CHARS += "■●▲▼□○△▽��������♠♥♦♣🯅��
 def create_internal_name(name):
 	return name.replace("\\","/").split("/")[-1].split(".")[0].upper()[:8].encode()
 
-def encode_text(filename, line_end=None, internal_name=None):
+def encode_text(filename, type_str, internal_name):
 	with open(filename, "r", encoding="utf-8") as f:
 		data = list(f.read())
 	
-	if not internal_name:
-		internal_name = create_internal_name(filename)
-	
-	# line ending conversion
-	if not line_end:
-		i = 0
-		while i < len(data):
-			# find line ending if not set
-			if data[i] == '\n':
-				data[i] = '\r'
-			i += 1
-		# line_end may be None if this is a MEM type being converted with no newlines, for example
+	i = 0
+	while i < len(data):
+		# find line ending if not set
+		if data[i] == '\n':
+			data[i] = '\r'
+		i += 1
 	
 	try:
 		byte_data = bytes([CHARS.index(c) for c in data])
@@ -43,16 +38,105 @@ def encode_text(filename, line_end=None, internal_name=None):
 		print("Error: File contains characters not known in PTC character set")
 		raise e
 	
-	return PTCFile(data=byte_data, type=PRG_TYPE, name=internal_name)
+	return PTCFile(data=byte_data, type=type_str, name=internal_name)
 
-def encode(filename, output, line_ending, force_type=None):
+def palettize(image):
+	pal_array = []
+	
+	for y in range(0,image.height):
+		for x in range(0,image.width):
+			pal_array.append(image.getpixel((x,y)))
+	return pal_array
+
+def encode_chr(image, internal_name, palette):
+	# prepare palette info
+	pal = palettize(palette)
+	pal = [pal[i:i+16] for i in range(0,256,16)] #split into 16 palettes
+	print(pal)
+	pal_maps = [{x:ix for ix, x in enumerate(sub)} for sub in pal]
+	# convert data to PTC format
+	data = ""
+	for cy in range(0,8):
+		for cx in range(0,32):
+			tile_cols = set()
+			for py in range(0,8):
+				for px in range(0,8):
+					tile_cols.add(image.getpixel((px+8*cx, py+8*cy)))
+			
+			sub_map = pal_maps[0]
+			for sub in pal_maps:
+				if tile_cols.issubset(sub): # if sub will work 100% as palette
+					sub_map = sub
+					break
+				elif len(tile_cols.intersection(sub)) > len(tile_cols.intersection(sub_map)): # if sub works partially and better than previous palette
+					sub_map = sub
+					# don't break because there might be a better match
+			
+			for py in range(0,8):
+				for px in range(0,8,2):
+					ph = image.getpixel((px+8*cx, py+8*cy))
+					pl = image.getpixel((px+8*cx+1, py+8*cy))
+					
+					#map all unknown colors to transparent
+					data += hex(sub_map[pl] if pl in sub_map else 0)[2] # remove 0x from hex output
+					data += hex(sub_map[ph] if ph in sub_map else 0)[2] # remove 0x from hex output
+	data = bytearray.fromhex(data)
+	
+	return PTCFile(data=data, type=CHR_TYPE, name=internal_name)
+
+def encode_image(image, type_str, internal_name, palette=None):
+	SIZE_TO_TYPE = {
+		(256,64):CHR_TYPE,
+		(256,192):GRP_TYPE,
+		(512,512):SCR_TYPE,
+		(16,16):COL_TYPE,
+	}
+	if type_str is None:
+		type_str = SIZE_TO_TYPE[(image.width, image.height)]
+	
+	if palette is None and (type_str == CHR_TYPE or type_str == SCR_TYPE):
+		# open default CHR palette and use that
+		palette = "col_bgsp.png"
+	elif palette is None and type_str == GRP_TYPE:
+		# open default GRP palette
+		palette = "col_grp.png"
+	# open provided palette
+	print(type_str)
+	if palette:
+		palette = Image.open(palette)
+	print(palette)
+	
+		#TODO do encoding here for type
+	if type_str == CHR_TYPE:
+		return encode_chr(image, internal_name, palette)
+
+
+def encode_graphic(filename, type_str, internal_name, palette=None):
+	try:
+		img = Image.open(filename)
+		return encode_image(img, type_str, internal_name, palette)
+	except PIL.UnidentifiedImageError as e:
+		# not an image format: insert raw data instead
+		if type_str is None:
+			raise Exception("Image format not recognized and output type unspecified")
+		with open(filename, "rb") as f:
+			data = f.read()
+		return PTCFile(data=data, type=type_str, name=internal_name)
+		
+
+def encode(filename, force_type=None, internal_name=None):
 	extension = filename.split(".")[-1]
+	internal_name = create_internal_name(filename) if not internal_name else create_internal_name(internal_name)
+	
 	if extension in ["txt"]:
-		return encode_text(filename, line_ending, output)
-	elif extension in ["png", "bmp"]:
-		return encode_image(filename, output)
+		return encode_text(filename, PRG_TYPE, internal_name)
+	elif extension in ["png", "bmp", "gif"]:
+		return encode_graphic(filename, force_type, internal_name)
 	elif force_type:
-		return encode_text(filename, output)
+		if force_type == PRG_TYPE or force_type == MEM_TYPE:
+			return encode_text(filename, force_type, internal_name)
+		else:
+			return encode_graphic(filename, force_type, internal_name)
 	else:
 		raise Exception("Format type not specified and cannot be guessed")
 

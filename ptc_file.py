@@ -63,7 +63,9 @@ class PTCFile:
 		
 		# NOTE: size depends on file size and therefore includes padding
 		# prg_size is just based on program size and does not include padding
-		self.size = len(self.data) + len(ptc_type) + PTC_PRG_HEADER_SIZE
+		self.size = len(self.data) + len(ptc_type)
+		if ptc_type == PRG_TYPE:
+			self.size += PTC_PRG_HEADER_SIZE
 		self.type_str = ptc_type
 		self.type_id = PTC_TYPES.index(ptc_type)
 		self.filename = (name+b"\0"*8)[:8]
