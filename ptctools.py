@@ -10,7 +10,7 @@ parser.add_argument("action", choices=["decode","encode","qr"], help="Encode to 
 parser.add_argument("source_file", help="Source file for action.")
 
 parser.add_argument("-f", "--format", dest="dest_format", help="Set PTC file output format.")
-parser.add_argument("-l", "--line-ending", dest="line_ending", choices=["CR","LF","CRLF"], help="Sets the line endings of non-PTC files.")
+parser.add_argument("-m", "--merge", dest="merge", action="store_true", help="Merge generated QRs into one image.")
 parser.add_argument("-n", "--name", dest="internal_name", help="Sets the internal PTC filename.")
 parser.add_argument("-o", "--output", dest="output_name", help="Sets the output filename.")
 parser.add_argument("-p", "--palette", dest="palette_file", help="Set the palette file to use when encoding from an image.")
@@ -18,15 +18,17 @@ parser.add_argument("-p", "--palette", dest="palette_file", help="Set the palett
 args = parser.parse_args()
 print(args)
 
+# get output file name
+if args.output_name:
+	output = args.output_name
+elif args.internal_name:
+	output = args.internal_name
+else:
+	output = encoder.create_internal_name(args.source_file).decode()
+
 if args.action == "encode":
 	# file -> PTC
 	# --output takes priority over --name takes priority over default originalname.PTC format
-	if args.output_name:
-		output = args.output_name
-	elif args.internal_name:
-		output = args.internal_name + ".PTC"
-	else:
-		output = encoder.create_internal_name(args.source_file).decode() + ".PTC"
 	
 	result = encoder.encode(args.source_file, args.internal_name, args.line_ending, force_type=args.dest_format)
 	result.write_file(output)
@@ -34,15 +36,9 @@ if args.action == "encode":
 	print(result)
 elif args.action == "decode":
 	# PTC -> file
-	if args.output_name:
-		output = args.output_name
-	elif args.internal_name:
-		output = args.internal_name
-	else:
-		output = encoder.create_internal_name(args.source_file).decode()
 	
 	encoder.decode(args.source_file, output)
 	
 elif args.action == "qr":
 	# file -> QRs
-	encoder.create_qr(args.source_file)
+	encoder.create_qr(args.source_file, output, args.merge)

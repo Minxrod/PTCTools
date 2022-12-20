@@ -84,7 +84,7 @@ class PTCFile:
 			raise Exception("Invalid constructor" + str([file,data,type,name]))
 	
 	def write_file(self, output):
-		with open(output, "wb") as f:
+		with open(output+".PTC", "wb") as f:
 			f.write(PX01)
 			f.write(to_bytes(self.size))
 			f.write(to_bytes(self.type_id))
