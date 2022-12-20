@@ -70,9 +70,7 @@ class PTCFile:
 		if ptc_type == PRG_TYPE:
 			self.package = b"\0"*8
 			self.prg_size = len(data)
-			self.md5 = md5(MD5_PREFIX + ptc_type + self.package + to_bytes(self.prg_size) + self.data)
-		else:
-			self.md5 = md5(MD5_PREFIX + ptc_type + self.data)
+		self.md5 = md5(MD5_PREFIX + self.get_internal_file())
 	
 	def __init__(self, *, file=None, data=None, type=None, name=None):
 		""" 
@@ -107,7 +105,10 @@ class PTCFile:
 		return s
 	
 	def get_internal_file(self):
-		return self.type_str + self.data
+		if self.type_str == PRG_TYPE:
+			return self.type_str + self.package + to_bytes(self.prg_size) + self.data
+		else:
+			return self.type_str + self.data
 		
 	def get_internal_name(self):
 		return self.filename

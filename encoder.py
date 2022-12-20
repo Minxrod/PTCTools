@@ -122,5 +122,5 @@ def create_qr(ptc_file):
 		img.save("qr"+format(i, "03d")+".png")
 #		print(i, img)
 #		img.show()
-#		print(chunk)
+		print(chunk)
 
