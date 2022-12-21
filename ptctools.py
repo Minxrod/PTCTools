@@ -4,7 +4,7 @@ import argparse
 import encoder
 
 parser = argparse.ArgumentParser(prog="ptctools", description="PTC file conversion tools.")
-parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.2 (c) 2022")
+parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.3 (c) 2022")
 
 parser.add_argument("action", choices=["decode","encode","qr"], help="Encode to PTC, decode from PTC, or create QR code from PTC")
 parser.add_argument("source_file", help="Source file for action.")

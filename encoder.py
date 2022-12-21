@@ -72,6 +72,18 @@ def palettize(image):
 			pal_array.append(image.getpixel((x,y)))
 	return pal_array
 
+def load_palette(palette, type_str=None):
+	if palette is None and (type_str == CHR_TYPE or type_str == SCR_TYPE):
+		# open default CHR palette and use that
+		palette = "col_bgsp.png"
+	elif palette is None and type_str == GRP_TYPE:
+		# open default GRP palette
+		palette = "col_grp.png"
+	# open provided palette
+	if palette:
+		palette = Image.open(palette)
+	return palette
+
 def encode_chr(image, internal_name, palette):
 	# prepare palette info
 	pal = palettize(palette)
@@ -151,7 +163,7 @@ def encode_scr(image, internal_name):
 	# TODO:
 	# how should tileset be passed?
 	# how should palettes be implemented?
-	raise NotImplemented("SCR not yet supported")
+	raise NotImplementedError("SCR not yet supported")
 
 def encode_image(image, type_str, internal_name, palette=None):
 	SIZE_TO_TYPE = {
@@ -165,15 +177,7 @@ def encode_image(image, type_str, internal_name, palette=None):
 	if type_str is None:
 		type_str = SIZE_TO_TYPE[(image.width, image.height)]
 	
-	if palette is None and (type_str == CHR_TYPE or type_str == SCR_TYPE):
-		# open default CHR palette and use that
-		palette = "col_bgsp.png"
-	elif palette is None and type_str == GRP_TYPE:
-		# open default GRP palette
-		palette = "col_grp.png"
-	# open provided palette
-	if palette:
-		palette = Image.open(palette)
+	palette = load_palette(palette, type_str)
 	
 	#TODO do encoding here for type
 	if type_str == CHR_TYPE:
@@ -240,12 +244,16 @@ def decode_text(data):
 		unicode_str += CHARS[c] if CHARS[c] != "�" else MEM_CHARS[c]
 	return unicode_str
 
-def decode(filename, output):
+def decode(filename, output, palette=None):
 	"""
 	Newlines are converted to LF by Python.
 	Note: Nulls are consumed for some reason.
 	"""
 	ptc = PTCFile(file=filename)
+	palette = load_palette(palette, ptc.type_str)
+	if palette:
+		pal = palettize(palette)
+	
 	if ptc.type_str == PRG_TYPE or ptc.type_str == MEM_TYPE:
 		with open(output+".txt", "wt", encoding="utf8", newline="") as f:
 			if ptc.type_str == PRG_TYPE:
@@ -258,7 +266,47 @@ def decode(filename, output):
 #				print([c for c in s])
 #				print(s, len(s))
 				f.write(s)
-		
+	elif ptc.type_str == GRP_TYPE:
+		grp_img = Image.new("RGBA",(256,192))
+		for i, p in enumerate(ptc.data):
+			by = i // 16384
+			bx = i // 4096 % 4
+			cy = i // 512 % 8
+			cx = i // 64 % 8
+			py = i // 8 % 8
+			px = i % 8
+			grp_img.putpixel((px+8*cx+64*bx, py+8*cy+64*by), pal[p])
+		grp_img.save(output+".png")
+	elif ptc.type_str == CHR_TYPE:
+		chr_img = Image.new("RGBA",(256,64))
+		for i, p in enumerate(ptc.data):
+			cy = i // 1024
+			cx = i // 32 % 32
+			py = i // 4 % 8
+			px = i % 4
+			chr_img.putpixel((2*px+8*cx, py+8*cy), pal[p & 0x0f])
+			chr_img.putpixel((2*px+1+8*cx, py+8*cy), pal[(p & 0xf0) >> 4])
+		chr_img.save(output+".png")
+	elif ptc.type_str == COL_TYPE:
+		col_img = Image.new("RGBA",(16,16))
+		for i in range(0,512,2):
+			# gBBBBBGG GGGRRRRR
+			y = i // 32
+			x = i // 2 % 16
+			p = ptc.data[i] + (ptc.data[i+1] << 8)
+			r = (p & 0x001f) << 3
+			g = ((p & 0x03e0) >> 2) + ((p & 0x8000) >> 13)
+			b = (p & 0x7c00) >> 7
+			# https://petitcomputer.fandom.com/wiki/COLSET_(Command)
+			# is this right? not sure
+			r = round(r * 255 / 248)
+			g = round(g * 255 / 252)
+			b = round(b * 255 / 248)
+			col_img.putpixel((x, y), (r, g, b, 255 if i>0 else 0))
+		col_img.save(output+".png")
+	elif ptc.type_str == SCR_TYPE:
+		# TODO: implement this
+		raise NotImplementedError("SCR decoding not implemented")
 	
 # shoutouts to this document here for all of the information
 # https://gist.github.com/ajc2/25258be3296847bc55cec9e27d13f053
