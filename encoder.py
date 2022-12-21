@@ -5,7 +5,7 @@ import PIL
 from PIL import Image, ImageDraw, ImageFont
 
 from ptc_file import PTCFile, to_bytes, md5
-from ptc_file import PRG_TYPE, MEM_TYPE, CHR_TYPE, SCR_TYPE, COL_TYPE, GRP_TYPE
+from ptc_file import PRG_TYPE, MEM_TYPE, CHR_TYPE, SCR_TYPE, COL_TYPE, GRP_TYPE, PTC_TYPES
 
 CHARS =  "\0🅐🅑����☺☻⇥★🖛🅻\r��♪♫🆁��🭽🭶🭾🅧🅨⭗�⭢⭠⭡⭣"
 CHARS += "".join([chr(c) for c in range(32,128)])
@@ -14,6 +14,11 @@ CHARS += "～。「」、・ヲァィゥェォャュョッーアイウエオカ�
 CHARS += "タチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン゛゜"
 CHARS += "■●▲▼□○△▽��������♠♥♦♣🯅���▔▏▕▁╱╲╳▒"
 
+def force_bytes_size(b, size):
+	# pad zeros for small file
+	b += (b"\0"*(size-len(b)))
+	# TODO: maybe should throw warning or error?
+	return b[:size]
 
 def create_internal_name(name):
 	return name.replace("\\","/").split("/")[-1].split(".")[0].upper()[:8].encode()
@@ -29,11 +34,16 @@ def encode_text(filename, type_str, internal_name):
 			data[i] = '\r'
 		i += 1
 	
-	try:
-		byte_data = bytes([CHARS.index(c) for c in data])
-	except ValueError as e:
-		print("Error: File contains characters not known in PTC character set")
-		raise e
+	if type_str == PRG_TYPE:
+		try:
+			byte_data = bytes([CHARS.index(c) for c in data])
+		except ValueError as e:
+			print("Error: File contains characters not known in PTC character set")
+			raise e
+	elif type_str == MEM_TYPE:
+		# pad string and 
+		byte_data = "".join(data).encode("utf-16")
+		force_bytes_size(byte_data, 512)
 	
 	return PTCFile(data=byte_data, type=type_str, name=internal_name)
 
@@ -105,8 +115,6 @@ def encode_grp(image, internal_name, palette):
 	
 	return PTCFile(data=bytes(data), type=GRP_TYPE, name=internal_name)
 
-# https://petitcomputer.fandom.com/wiki/COLSET_(Command)
-# not checking this [yet], assuming it's accurate
 def encode_col(image, internal_name):
 	pal = palettize(image)
 	data = b""
@@ -121,12 +129,20 @@ def encode_col(image, internal_name):
 	
 	return PTCFile(data=data, type=COL_TYPE, name=internal_name)
 
+def encode_scr(image, internal_name):
+	# TODO:
+	# how should tileset be passed?
+	# how should palettes be implemented?
+	raise NotImplemented("SCR not yet supported")
+
 def encode_image(image, type_str, internal_name, palette=None):
 	SIZE_TO_TYPE = {
 		(256,64):CHR_TYPE,
 		(256,192):GRP_TYPE,
 		(512,512):SCR_TYPE,
 		(16,16):COL_TYPE,
+		(256,1):COL_TYPE,
+		(1,256):COL_TYPE,
 	}
 	if type_str is None:
 		type_str = SIZE_TO_TYPE[(image.width, image.height)]
@@ -148,7 +164,8 @@ def encode_image(image, type_str, internal_name, palette=None):
 		return encode_grp(image, internal_name, palette)
 	elif type_str == COL_TYPE:
 		return encode_col(image, internal_name)
-
+	elif type_str == SCR_TYPE:
+		return encode_scr(image, internal_name)
 
 def encode_graphic(filename, type_str, internal_name, palette=None):
 	try:
@@ -160,46 +177,68 @@ def encode_graphic(filename, type_str, internal_name, palette=None):
 			raise Exception("Image format not recognized and output type unspecified")
 		with open(filename, "rb") as f:
 			data = f.read()
+		TYPE_TO_SIZE = {
+			CHR_TYPE:8192,
+			GRP_TYPE:49152,
+			COL_TYPE:512,
+			SCR_TYPE:8192
+		}
+		
+		# pad zeros for small file, trim for large file
+		data = force_bytes_size(data, TYPE_TO_SIZE[type_str])
+		
 		return PTCFile(data=data, type=type_str, name=internal_name)
 		
 
 def encode(filename, force_type=None, internal_name=None):
+	# allow short type names
+	for t in PTC_TYPES:
+		if t[-3:] == force_type.encode():
+			force_type = t
+			break
+	
 	extension = filename.split(".")[-1]
 	internal_name = create_internal_name(filename) if not internal_name else create_internal_name(internal_name)
 	
-	if extension in ["txt"]:
-		return encode_text(filename, PRG_TYPE, internal_name)
-	elif extension in ["png", "bmp", "gif"]:
-		return encode_graphic(filename, force_type, internal_name)
-	elif force_type:
+	if force_type:
 		if force_type == PRG_TYPE or force_type == MEM_TYPE:
 			return encode_text(filename, force_type, internal_name)
 		else:
 			return encode_graphic(filename, force_type, internal_name)
+	elif extension in ["txt"]:
+		return encode_text(filename, PRG_TYPE, internal_name)
+	elif extension in ["png", "bmp", "gif"]:
+		return encode_graphic(filename, force_type, internal_name)
 	else:
 		raise Exception("Format type not specified and cannot be guessed")
 
 def decode_text(data):
 	unicode_str = ""
 	for c in data:
-		if c > 0 and c < 256:
-			unicode_str += CHARS[c]
-		elif c >= 256:
+		cc = ord(c)
+		if cc > 0 and cc < 256:
+			unicode_str += CHARS[cc]
+		elif cc >= 256:
 			unicode_str += c
 	return unicode_str
 
 def decode(filename, output):
 	"""
-	Newlines are converted to LF.
+	Newlines are converted to LF by Python.
+	Note: Nulls are consumed for some reason.
 	"""
 	ptc = PTCFile(file=filename)
 	if ptc.type_str == PRG_TYPE or ptc.type_str == MEM_TYPE:
-		with open(output+".txt", "w") as f:
+		with open(output+".txt", "wt", encoding="utf8") as f:
 			if ptc.type_str == PRG_TYPE:
 				s = decode_text(ptc.data)
 				f.write(s)
 			elif ptc.type_str == MEM_TYPE:
-				s = decode_text(ptc.data.decode("usc2"))
+#				print(ptc.data)
+				s = ptc.data[:512].decode("utf-16le")
+				s = decode_text(s)
+#				print([c for c in s])
+#				print(s, len(s))
 				f.write(s)
 		
 	
