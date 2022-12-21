@@ -77,6 +77,7 @@ def encode_chr(image, internal_name, palette):
 			for i, sub in enumerate(pal_maps):
 				if tile_cols.issubset(sub): # if sub will work 100% as palette
 					sub_map = sub
+					sub_pal = pal[i]
 					break
 #				elif len(tile_cols.intersection(sub)) > len(tile_cols.intersection(sub_map)): # if sub works partially and better than previous palette
 #					sub_map = sub
@@ -98,7 +99,6 @@ def encode_chr(image, internal_name, palette):
 					ph = image.getpixel((px+8*cx, py+8*cy))
 					pl = image.getpixel((px+8*cx+1, py+8*cy))
 					
-					#map all unknown colors to transparent
 					if pl in sub_map:
 						data += hex(sub_map[pl])[2] # remove 0x from hex output
 					else:
@@ -116,7 +116,7 @@ def encode_chr(image, internal_name, palette):
 	return PTCFile(data=data, type=CHR_TYPE, name=internal_name)
 
 def match_close_color(p, pal):
-	if p[3] == 0: print(0); return 0, 0 # transparency check
+	#if p[3] == 0: print(0); return 0, 0 # transparency check
 	diff = lambda c, p: (abs(c[0]-p[0])**2+abs(c[1]-p[1])**2+abs(c[2]-p[2])**2)
 	
 	min_diff = diff(p, pal[0])
@@ -126,7 +126,7 @@ def match_close_color(p, pal):
 		if c_diff < min_diff:
 			min_diff = c_diff
 			min_diff_i = i
-	print(p)
+#	print(p)
 #	print(min_diff_i, min_diff, pal[min_diff_i])
 	return min_diff_i, min_diff
 
@@ -171,11 +171,93 @@ def encode_col(image, internal_name):
 	
 	return PTCFile(data=data, type=COL_TYPE, name=internal_name)
 
-def encode_scr(image, internal_name):
+def encode_scr(image, internal_name, palette, tileset):
+	pal = palettize(palette)
+	pal = [[(pal[i][0],pal[i][1],pal[i][2],0)]+pal[i+1:i+16] for i in range(0,256,16)] #split into 16 palettes, first color is transparent
+#	print(pal)
+	pal_maps = [{x:ix for ix, x in enumerate(sub)} | {x[:3]:ix for ix, x in enumerate(sub)} for sub in pal]
+	
+	tiles = Image.open(tileset)
+	
+	chr_data = b""
+	for i in range(0,tiles.height,64):
+		chr_part_img = tiles.crop((0,i,256,i+64))
+		chr_data += encode_chr(chr_part_img, b"SCR_TILE", palette).data
+	# contains entire tileset
+	
+	scr_data = b""
+	for y in range(0,image.height,256):
+		for x in range(0,image.width,256):
+			for cy in range(0,256,64):
+				scr_part_img = image.crop((x,y+cy,x+256,y+cy+64))
+				scr_data += encode_chr(scr_part_img, b"SCR_DATA", palette).data
+	# scr_data contains SCR if it was converted to CHR
+	
+	data = b""
+	chr_size = 32
+	for i in range(0,len(scr_data),chr_size):
+		scr_chr = scr_data[i:i+chr_size]
+		loc = -1
+		rot = 0
+		while loc == -1:
+			if rot == 0:
+				scr_chunk = scr_chr
+			#TODO: Rotations?
+
+			print(scr_chr, loc)
+			while (loc := chr_data.index(scr_chunk, loc+1)) & 0x001f:
+				print(scr_chr, loc)
+				if loc == -1:
+					break # loop until loc is a multiple of 32 or not found
+			print(scr_chr, loc)
+			if loc == -1:
+				raise NotImplementedError("Error: Tile unidentified, possibly an unimplemented rotation")
+				rot += 1
+			else:
+				break
+			
+		chr_id = loc // 32
+		
+		# determine palette of a single tile
+		tile_cols = set()
+		for py in range(0,8):
+			for px in range(0,8):
+				j = i // 32
+				by = j // 2048
+				bx = j // 1024 % 2
+				ty = j // 32 % 32
+				tx = j % 32
+				print(j)
+				tile_cols.add(image.getpixel(((px+8*tx+256*bx), py+8*ty+256*by)))
+		
+		# find closest matching palette
+		sub_map = pal_maps[0]
+#			print(tile_cols)
+		min_diff = 99999999
+		chr_pal = 0
+		for p, sub in enumerate(pal_maps):
+			if tile_cols.issubset(sub): # if sub will work 100% as palette
+				sub_map = sub
+				chr_pal = p
+				break
+			else:
+				d = 0
+				for c in tile_cols:
+					close, diff = match_close_color(c, pal[p])
+					d += diff
+				if d < min_diff:
+					min_diff = d
+					sub_map = sub # colors on average were closer
+					chr_pal = p
+		
+		data += byte(chr_id & 0x00ff)
+		data += byte((chr_pal << 4) | (chr_id >> 8))
+	
+	return PTCFile(data=data, type=SCR_TYPE, name=internal_name)
 	# TODO:
 	# how should tileset be passed?
 	# how should palettes be implemented?
-	raise NotImplementedError("SCR not yet supported")
+	
 
 def encode_image(image, args):
 	SIZE_TO_TYPE = {

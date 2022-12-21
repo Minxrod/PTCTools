@@ -6,7 +6,7 @@ import decoder
 import qr
 
 parser = argparse.ArgumentParser(prog="ptctools", description="PTC file conversion tools.")
-parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.4 (c) 2022")
+parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.5 (c) 2022")
 
 parser.add_argument("action", choices=["decode","encode","qr"], help="Encode to PTC, decode from PTC, or create QR code from PTC")
 parser.add_argument("source_file", help="Source file for action.")
@@ -16,7 +16,7 @@ parser.add_argument("-m", "--merge", dest="merge", action="store_true", help="Me
 parser.add_argument("-n", "--name", dest="internal_name", help="Sets the internal PTC filename.")
 parser.add_argument("-o", "--output", dest="output", help="Sets the output filename.")
 parser.add_argument("-p", "--palette", dest="palette", help="Set the palette file to use when encoding from an image.")
-parser.add_argument("-t", "--tileset", dest="tileset", help="Set the tileset file to use when encoding to SCR.")
+parser.add_argument("-t", "--tileset", dest="tileset", help="Set the tileset file to use when encoding/decoding SCR.")
 
 args = parser.parse_args()
 print(args)
