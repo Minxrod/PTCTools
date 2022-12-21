@@ -57,6 +57,43 @@ def decode_col(ptc, output):
 		col_img.putpixel((x, y), (r, g, b, 255 if i>0 else 0))
 	col_img.save(output+".png")
 
+def decode_scr(ptc, output, palette, tiles):
+	# img -> data?
+	pal=palettize(palette)
+	tiles = Image.open(tiles)
+	
+	from encoder import encode_chr
+	# maybe there's a better way to do this
+	chr_data = b""
+	for i in range(0,tiles.height,64):
+		chr_part_img = tiles.crop((0,i,256,i+64))
+		chr_data += encode_chr(chr_part_img, b"SCR_TILE", palette).data
+	
+	scr_img = Image.new("RGBA",(512,512))
+	for i in range(0,8192,2):
+		# PPPPVHCC CCCCCCCC
+		chr_id = ptc.data[i] + ((ptc.data[i+1] & 0x03) << 8)
+		chr_h = (ptc.data[i+1] & 0x04) >> 2
+		chr_v = (ptc.data[i+1] & 0x08) >> 3
+		chr_pal = (ptc.data[i+1] & 0xf0) >> 4
+		
+		by = i // 4096
+		bx = i // 2048 % 2
+		ty = i // 64 % 32
+		tx = i // 2 % 32
+		
+#		print(chr_id)
+		chr_small_data = chr_data[chr_id*32:chr_id*32+32]
+		for py in range(0,8):
+			for px in range(0,8,2):
+#				print(px,py)
+				ph = (chr_small_data[px//2 + 4*py] & 0xf0) >> 4
+				pl = chr_small_data[px//2 + 4*py] & 0x0f
+				
+				scr_img.putpixel((px+8*tx+256*bx,py+8*ty+256*by), pal[pl+16*chr_pal])
+				scr_img.putpixel((px+1+8*tx+256*bx,py+8*ty+256*by), pal[ph+16*chr_pal])
+	scr_img.save(output+".png")
+
 def decode(args):
 	"""
 	Newlines are converted to LF by Python.
@@ -85,7 +122,6 @@ def decode(args):
 	elif ptc.type_str == COL_TYPE:
 		decode_col(ptc, args.output)
 	elif ptc.type_str == SCR_TYPE:
-		# TODO: implement this
-		raise NotImplementedError("SCR decoding not implemented")
+		decode_scr(ptc, args.output, palette, args.tileset)
 
 
