@@ -9,7 +9,7 @@ This program is a WIP.
 If there is a feature missing you would like to see, please create an issue.
 If something breaks, please create an issue. Please provide the command and any relevant files that failed.
 
-Current feature:
+# Features:
 ## encode
 * Convert text to PRG, MEM
 * Convert image to GRP, CHR, COL, 
@@ -28,9 +28,11 @@ Current feature:
 * Auto-merge QR codes into one image
 
 # Setup
-This program is created entirely in Python 3 and relies on the `Pillow` and `qrcode` Python libraries. These can be installed using pip:
+This program is created entirely in Python 3 and relies on the `Pillow` and `qrcode` Python libraries. A basic setup would be:
 ```
 python3 -m pip install Pillow qrcode[PIL]
+git clone https://github.com/Minxrod/PTCTools.git
+chmod +x ptctools
 ```
 
 You will need the default color palettes. These can be copied by executed the following PTC commands and then saving to the SD card.
@@ -40,15 +42,14 @@ SAVE "COL2:COL2"
 ```
 Alternatively, you can use the files extracted via the setup of https://github.com/Minxrod/PTC-EmkII. These would be located in the resources/graphics/ subdirectory.
 
-
+Once you've done so, you can set up the graphics like this:
 ```shell
-git clone https://github.com/Minxrod/ptctools.git
-chmod +x ptctools
 ./ptctools decode COL0.ptc --output col_bgsp.png
 ./ptctools decode COL2.ptc --output col_grp.png
 ```
 
 # Example usage
+For more information on each options, see `./ptctools --help`.
 
 ## file -> PTC
 ```
@@ -81,7 +82,7 @@ Converts bgf0.png into a PTC file with internal name FONT, and then creates qr c
 # Notes
 
 Encoding and decoding are based on characters that are close to their PTC equivalents in UTF-8.
-Some characters are not mapped, so decoded files can be missing some data.
+Some characters are not mapped or do not map correctly (like \x00), so decoded files can be missing some data or look different.
 
 # Operations
 
@@ -96,31 +97,17 @@ Converts from a common format to a PTC SD formatted file. The output format is g
 	To specify the MEM type or to specify the type explicity, use the --format option. If a non-image input file is provided
 	and the output format is forced to be a graphical type, the binary data will be inserted into the PTC file with no conversion.
 	
-	Notes:
-	PRG files:
-	Line endings are determined by OS/Python default, and converted to CR automatically.
+	There may be some weirdness with line endings. Make sure input files are using "\r" line ending for best results.
 
 ## decode
 	Converts from a PTC file to a common format.
 	
 	Notes:
 	PRG files:
-	Line endings will be CR only.
+	Line endings will be "\r".
 
 ## qr
 	Converts a PTC file into a QR code or QR codes. Default behavior is to save to 
-
-# Options
-
---format PTC_FORMAT
--f PTC_FORMAT
-	Specify encoding output format directly. For non-image types being mapped to graphical formats, the binary data is inserted.
-	MEM,PRG: Read input file as utf-8 text. 
-	CHR,GRP,SCR,COL: Read input file as image if possible; otherwise insert binary data into file.
-
---palette FILE
--p FILE
-	Specify the color palette to use for image conversions, instead of the default palette. Only applies if encoding or decoding an image.
 	
 # References
 PTCUtilities - https://micutil.com/ptcutilities/top_e.html
