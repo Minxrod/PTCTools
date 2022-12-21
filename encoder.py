@@ -39,7 +39,6 @@ def encode_text(filename, type_str, internal_name):
 
 def palettize(image):
 	pal_array = []
-	
 	for y in range(0,image.height):
 		for x in range(0,image.width):
 			pal_array.append(image.getpixel((x,y)))
@@ -50,16 +49,19 @@ def encode_chr(image, internal_name, palette):
 	pal = palettize(palette)
 	pal = [pal[i:i+16] for i in range(0,256,16)] #split into 16 palettes
 	print(pal)
-	pal_maps = [{x:ix for ix, x in enumerate(sub)} for sub in pal]
+	pal_maps = [{x:ix for ix, x in enumerate(sub)} | {x[:3]:ix for ix, x in enumerate(sub)} for sub in pal]
+	# doubled map because (0,0,0) and (0,0,0,X) both may be checked due to differing image transparency
 	# convert data to PTC format
 	data = ""
 	for cy in range(0,8):
 		for cx in range(0,32):
+			# determine palette of a single tile
 			tile_cols = set()
 			for py in range(0,8):
 				for px in range(0,8):
 					tile_cols.add(image.getpixel((px+8*cx, py+8*cy)))
 			
+			# find closest matching palette
 			sub_map = pal_maps[0]
 			for sub in pal_maps:
 				if tile_cols.issubset(sub): # if sub will work 100% as palette
@@ -69,6 +71,7 @@ def encode_chr(image, internal_name, palette):
 					sub_map = sub
 					# don't break because there might be a better match
 			
+			# convert single CHR to data
 			for py in range(0,8):
 				for px in range(0,8,2):
 					ph = image.getpixel((px+8*cx, py+8*cy))
@@ -80,6 +83,25 @@ def encode_chr(image, internal_name, palette):
 	data = bytearray.fromhex(data)
 	
 	return PTCFile(data=data, type=CHR_TYPE, name=internal_name)
+
+def encode_grp(image, internal_name, palette):
+	pal = palettize(palette)
+	pal_map = {x:ix for ix, x in enumerate(pal) if ix == pal.index(x)}
+	pal_map = pal_map | {x[:3]:ix for ix, x in enumerate(pal)} # to fix stupid transparency errors
+	print(pal_map)
+	#behold, the staircase
+	data = []
+	for by in range(0,3):
+		for bx in range(0,4):
+			for cy in range(0,8):
+				for cx in range(0,8):
+					for py in range(0,8):
+						for px in range(0,8):
+							p = image.getpixel((px+8*cx+64*bx, py+8*cy+64*by))
+							# unknown colors become transparent
+							data.append(pal_map[p] if p in pal_map else 0)
+	
+	return PTCFile(data=bytes(data), type=GRP_TYPE, name=internal_name)
 
 def encode_image(image, type_str, internal_name, palette=None):
 	SIZE_TO_TYPE = {
@@ -98,15 +120,14 @@ def encode_image(image, type_str, internal_name, palette=None):
 		# open default GRP palette
 		palette = "col_grp.png"
 	# open provided palette
-	print(type_str)
 	if palette:
 		palette = Image.open(palette)
-	print(palette)
 	
-		#TODO do encoding here for type
+	#TODO do encoding here for type
 	if type_str == CHR_TYPE:
 		return encode_chr(image, internal_name, palette)
-	
+	elif type_str == GRP_TYPE:
+		return encode_grp(image, internal_name, palette)
 
 
 def encode_graphic(filename, type_str, internal_name, palette=None):
