@@ -14,25 +14,45 @@ CHARS += "～。「」、・ヲァィゥェォャュョッーアイウエオカ�
 CHARS += "タチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン゛゜"
 CHARS += "■●▲▼□○△▽��������♠♥♦♣🯅���▔▏▕▁╱╲╳▒"
 
+MEM_CHARS = "\0\t\n\r ！”＃＄％＆’（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［￥］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～｟ 。「」、・ヲァィゥェォャュョッｰアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン゛゜àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
+
 def force_bytes_size(b, size):
 	# pad zeros for small file
 	b += (b"\0"*(size-len(b)))
 	# TODO: maybe should throw warning or error?
 	return b[:size]
 
+def byte(n):
+	return n.to_bytes(1, byteorder="little")
+
 def create_internal_name(name):
 	return name.replace("\\","/").split("/")[-1].split(".")[0].upper()[:8].encode()
 
+def encode_ucs2(data):
+	byte_str = b""
+	for c in data:
+		cc = ord(c)
+		if c in MEM_CHARS:
+			byte_str += c.encode("utf-16le")
+#			byte_str += byte(MEM_CHARS.index(c)) + b'\0'
+		elif c in CHARS:
+			byte_str += byte(ord(c)) + b'\0'
+		else:
+			print(c, c.encode())
+			raise Exception("Unknown character!")
+
+	return byte_str
+
 def encode_text(filename, type_str, internal_name):
-	with open(filename, "r", encoding="utf-8") as f:
+	with open(filename, "r", encoding="utf-8", newline="") as f:
 		data = list(f.read())
 	
 	i = 0
-	while i < len(data):
+#	while i < len(data):
 		# find line ending if not set
-		if data[i] == '\n':
-			data[i] = '\r'
-		i += 1
+#		if data[i] == '\n':
+#			data[i] = '\r'
+#		i += 1
 	
 	if type_str == PRG_TYPE:
 		try:
@@ -42,8 +62,9 @@ def encode_text(filename, type_str, internal_name):
 			raise e
 	elif type_str == MEM_TYPE:
 		# pad string and 
-		byte_data = "".join(data).encode("utf-16")
+		byte_data = encode_ucs2(data)
 		force_bytes_size(byte_data, 512)
+		byte_data += to_bytes(len(data))
 	
 	return PTCFile(data=byte_data, type=type_str, name=internal_name)
 
@@ -192,10 +213,11 @@ def encode_graphic(filename, type_str, internal_name, palette=None):
 
 def encode(filename, force_type=None, internal_name=None):
 	# allow short type names
-	for t in PTC_TYPES:
-		if t[-3:] == force_type.encode():
-			force_type = t
-			break
+	if force_type:
+		for t in PTC_TYPES:
+			if t[-3:] == force_type.encode():
+				force_type = t
+				break
 	
 	extension = filename.split(".")[-1]
 	internal_name = create_internal_name(filename) if not internal_name else create_internal_name(internal_name)
@@ -229,15 +251,15 @@ def decode(filename, output):
 	"""
 	ptc = PTCFile(file=filename)
 	if ptc.type_str == PRG_TYPE or ptc.type_str == MEM_TYPE:
-		with open(output+".txt", "wt", encoding="utf8") as f:
+		with open(output+".txt", "wt", encoding="utf8", newline="") as f:
 			if ptc.type_str == PRG_TYPE:
 				s = decode_text(ptc.data)
 				f.write(s)
 			elif ptc.type_str == MEM_TYPE:
 #				print(ptc.data)
-				s = ptc.data[:512].decode("utf-16le")
-				s = decode_text(s)
-#				print([c for c in s])
+				s = ptc.data[:512].decode("utf-16-le")
+#				s = decode_text(s)
+				print([c for c in s])
 #				print(s, len(s))
 				f.write(s)
 		
