@@ -57,17 +57,17 @@ def decode_col(ptc, output):
 		col_img.putpixel((x, y), (r, g, b, 255 if i>0 else 0))
 	col_img.save(output+".png")
 
-def decode(filename, output, palette=None):
+def decode(args):
 	"""
 	Newlines are converted to LF by Python.
 	"""
-	ptc = PTCFile(file=filename)
-	palette = load_palette(palette, ptc.type_str)
+	ptc = PTCFile(file=args.source_file)
+	palette = load_palette(args.palette, ptc.type_str)
 	if palette:
 		pal = palettize(palette)
 	
 	if ptc.type_str == PRG_TYPE or ptc.type_str == MEM_TYPE:
-		with open(output+".txt", "wt", encoding="utf8", newline="") as f:
+		with open(args.output+".txt", "wt", encoding="utf8", newline="") as f:
 			if ptc.type_str == PRG_TYPE:
 				s = decode_text(ptc.data)
 				f.write(s)
@@ -79,11 +79,11 @@ def decode(filename, output, palette=None):
 #				print(s, len(s))
 				f.write(s)
 	elif ptc.type_str == GRP_TYPE:
-		decode_grp(ptc, output, pal)
+		decode_grp(ptc, args.output, pal)
 	elif ptc.type_str == CHR_TYPE:
-		decode_chr(ptc, output, pal)
+		decode_chr(ptc, args.output, pal)
 	elif ptc.type_str == COL_TYPE:
-		decode_col(ptc, output)
+		decode_col(ptc, args.output)
 	elif ptc.type_str == SCR_TYPE:
 		# TODO: implement this
 		raise NotImplementedError("SCR decoding not implemented")
