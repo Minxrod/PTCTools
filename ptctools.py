@@ -4,7 +4,7 @@ import argparse
 import encoder
 
 parser = argparse.ArgumentParser(prog="ptctools", description="PTC file conversion tools.")
-parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.3 (c) 2022")
+parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.4 (c) 2022")
 
 parser.add_argument("action", choices=["decode","encode","qr"], help="Encode to PTC, decode from PTC, or create QR code from PTC")
 parser.add_argument("source_file", help="Source file for action.")
@@ -30,7 +30,7 @@ if args.action == "encode":
 	# file -> PTC
 	# --output takes priority over --name takes priority over default originalname.PTC format
 	
-	result = encoder.encode(args.source_file, args.dest_format, args.internal_name)
+	result = encoder.encode(args.source_file, args.dest_format, args.internal_name, args.palette_file)
 	result.write_file(output)
 	
 	print("Wrote result to PTC file:")
@@ -38,7 +38,7 @@ if args.action == "encode":
 elif args.action == "decode":
 	# PTC -> file
 	
-	encoder.decode(args.source_file, output)
+	encoder.decode(args.source_file, output, args.palette_file)
 	print("Decoded "+args.source_file+" to file "+output)
 	
 elif args.action == "qr":

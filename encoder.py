@@ -1,11 +1,12 @@
-import qrcode
 import zlib
 from math import ceil
-import PIL
-from PIL import Image, ImageDraw, ImageFont
 
 from ptc_file import PTCFile, to_bytes, md5
 from ptc_file import PRG_TYPE, MEM_TYPE, CHR_TYPE, SCR_TYPE, COL_TYPE, GRP_TYPE, PTC_TYPES
+
+import qrcode
+import PIL
+from PIL import Image, ImageDraw, ImageFont
 
 CHARS =  "\0🅐🅑����☺☻⇥★🖛🅻\r��♪♫🆁��🭽🭶🭾🅧🅨⭗�⭢⭠⭡⭣"
 CHARS += "".join([chr(c) for c in range(32,128)])
@@ -87,7 +88,7 @@ def load_palette(palette, type_str=None):
 def encode_chr(image, internal_name, palette):
 	# prepare palette info
 	pal = palettize(palette)
-	pal = [pal[i:i+16] for i in range(0,256,16)] #split into 16 palettes
+	pal = [[(pal[i][0],pal[i][1],pal[i][2],0)]+pal[i+1:i+16] for i in range(0,256,16)] #split into 16 palettes, first color is transparent
 	print(pal)
 	pal_maps = [{x:ix for ix, x in enumerate(sub)} | {x[:3]:ix for ix, x in enumerate(sub)} for sub in pal]
 	# doubled map because (0,0,0) and (0,0,0,X) both may be checked due to differing image transparency
@@ -103,6 +104,7 @@ def encode_chr(image, internal_name, palette):
 			
 			# find closest matching palette
 			sub_map = pal_maps[0]
+#			print(tile_cols)
 			for sub in pal_maps:
 				if tile_cols.issubset(sub): # if sub will work 100% as palette
 					sub_map = sub
@@ -130,7 +132,7 @@ def encode_grp(image, internal_name, palette):
 	pal = palettize(palette)
 	pal_map = {x:ix for ix, x in enumerate(pal) if ix == pal.index(x)}
 	pal_map = pal_map | {x[:3]:ix for ix, x in enumerate(pal)} # to fix stupid transparency errors
-	print(pal_map)
+#	print(pal_map)
 	#behold, the staircase
 	data = []
 	for by in range(0,3):
@@ -212,7 +214,7 @@ def encode_graphic(filename, type_str, internal_name, palette=None):
 		return PTCFile(data=data, type=type_str, name=internal_name)
 		
 
-def encode(filename, force_type=None, internal_name=None):
+def encode(filename, force_type=None, internal_name=None, palette=None):
 	# allow short type names
 	if force_type:
 		for t in PTC_TYPES:
@@ -225,13 +227,13 @@ def encode(filename, force_type=None, internal_name=None):
 	
 	if force_type:
 		if force_type == PRG_TYPE or force_type == MEM_TYPE:
-			return encode_text(filename, force_type, internal_name)
+			return encode_text(filename, force_type, internal_name, palette)
 		else:
-			return encode_graphic(filename, force_type, internal_name)
+			return encode_graphic(filename, force_type, internal_name, palette)
 	elif extension in ["txt"]:
-		return encode_text(filename, PRG_TYPE, internal_name)
+		return encode_text(filename, PRG_TYPE, internal_name, palette)
 	elif extension in ["png", "bmp", "gif"]:
-		return encode_graphic(filename, force_type, internal_name)
+		return encode_graphic(filename, force_type, internal_name, palette)
 	else:
 		raise Exception("Format type not specified and cannot be guessed")
 
@@ -299,9 +301,9 @@ def decode(filename, output, palette=None):
 			b = (p & 0x7c00) >> 7
 			# https://petitcomputer.fandom.com/wiki/COLSET_(Command)
 			# is this right? not sure
-			r = round(r * 255 / 248)
-			g = round(g * 255 / 252)
-			b = round(b * 255 / 248)
+			#r = round(r * 255 / 248)
+			#g = round(g * 255 / 252)
+			#b = round(b * 255 / 248)
 			col_img.putpixel((x, y), (r, g, b, 255 if i>0 else 0))
 		col_img.save(output+".png")
 	elif ptc.type_str == SCR_TYPE:
