@@ -70,6 +70,7 @@ def decode_scr(ptc, output, palette, tiles):
 		chr_data += encode_chr(chr_part_img, b"SCR_TILE", palette).data
 	
 	scr_img = Image.new("RGBA",(512,512))
+	small_img = Image.new("RGBA", (8,8))
 	for i in range(0,8192,2):
 		# PPPPVHCC CCCCCCCC
 		chr_id = ptc.data[i] + ((ptc.data[i+1] & 0x03) << 8)
@@ -89,9 +90,15 @@ def decode_scr(ptc, output, palette, tiles):
 #				print(px,py)
 				ph = (chr_small_data[px//2 + 4*py] & 0xf0) >> 4
 				pl = chr_small_data[px//2 + 4*py] & 0x0f
-				
-				scr_img.putpixel((px+8*tx+256*bx,py+8*ty+256*by), pal[pl+16*chr_pal])
-				scr_img.putpixel((px+1+8*tx+256*bx,py+8*ty+256*by), pal[ph+16*chr_pal])
+				small_img.putpixel((px,py), pal[pl+16*chr_pal])
+				small_img.putpixel((px+1,py), pal[ph+16*chr_pal])
+		
+		if chr_h:
+			small_img = small_img.transpose(method=Image.Transpose.FLIP_LEFT_RIGHT)
+		if chr_v:
+			small_img = small_img.transpose(method=Image.Transpose.FLIP_TOP_BOTTOM)
+		
+		scr_img.paste(small_img, (8*tx+256*bx,8*ty+256*by))
 	scr_img.save(output+".png")
 
 def decode(args):
