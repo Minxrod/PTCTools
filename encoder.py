@@ -84,6 +84,8 @@ def encode_chr(image, internal_name, palette):
 	
 	return PTCFile(data=data, type=CHR_TYPE, name=internal_name)
 
+# see https://petitcomputer.fandom.com/wiki/GRP_File_Format_(External)
+# for why there's a staircase of for loops
 def encode_grp(image, internal_name, palette):
 	pal = palettize(palette)
 	pal_map = {x:ix for ix, x in enumerate(pal) if ix == pal.index(x)}
@@ -102,6 +104,22 @@ def encode_grp(image, internal_name, palette):
 							data.append(pal_map[p] if p in pal_map else 0)
 	
 	return PTCFile(data=bytes(data), type=GRP_TYPE, name=internal_name)
+
+# https://petitcomputer.fandom.com/wiki/COLSET_(Command)
+# not checking this [yet], assuming it's accurate
+def encode_col(image, internal_name):
+	pal = palettize(image)
+	data = b""
+	for c in pal:
+		# GGGRRRRR GBBBBBGG
+		r = round(c[0] // 8)
+		g = round(c[1] // 4)
+		b = round(c[2] // 8)
+		
+		data += (r | ((g & 0b001110) << 4)).to_bytes(1, byteorder="little")
+		data += (((g & 0b110000) >> 4) | (b << 2) | ((g & 0b000001) << 7)).to_bytes(1, byteorder="little")
+	
+	return PTCFile(data=data, type=COL_TYPE, name=internal_name)
 
 def encode_image(image, type_str, internal_name, palette=None):
 	SIZE_TO_TYPE = {
@@ -128,6 +146,8 @@ def encode_image(image, type_str, internal_name, palette=None):
 		return encode_chr(image, internal_name, palette)
 	elif type_str == GRP_TYPE:
 		return encode_grp(image, internal_name, palette)
+	elif type_str == COL_TYPE:
+		return encode_col(image, internal_name)
 
 
 def encode_graphic(filename, type_str, internal_name, palette=None):
