@@ -2,6 +2,8 @@
 import argparse
 
 import encoder
+import decoder
+import qr
 
 parser = argparse.ArgumentParser(prog="ptctools", description="PTC file conversion tools.")
 parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.4 (c) 2022")
@@ -14,6 +16,7 @@ parser.add_argument("-m", "--merge", dest="merge", action="store_true", help="Me
 parser.add_argument("-n", "--name", dest="internal_name", help="Sets the internal PTC filename.")
 parser.add_argument("-o", "--output", dest="output_name", help="Sets the output filename.")
 parser.add_argument("-p", "--palette", dest="palette_file", help="Set the palette file to use when encoding from an image.")
+parser.add_argument("-t", "--tileset", dest="tileset_file", help="Set the tileset file to use when encoding to SCR.")
 
 args = parser.parse_args()
 print(args)
@@ -38,10 +41,10 @@ if args.action == "encode":
 elif args.action == "decode":
 	# PTC -> file
 	
-	encoder.decode(args.source_file, output, args.palette_file)
+	decoder.decode(args.source_file, output, args.palette_file)
 	print("Decoded "+args.source_file+" to file "+output)
 	
 elif args.action == "qr":
 	# file -> QRs
-	encoder.create_qr(args.source_file, output, args.merge)
+	qr.create_qr(args.source_file, output, args.merge)
 	print("QRs created and saved to "+output)
