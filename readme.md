@@ -100,16 +100,15 @@ Converts from a common format to a PTC SD formatted file. The output format is g
 	There may be some weirdness with line endings. Make sure input files are using "\r" line ending for best results.
 
 ## decode
-	Converts from a PTC file to a common format.
-	
-	Notes:
-	PRG files:
-	Line endings will be "\r".
+Converts from a PTC file to a common format.
+
+Notes:
+For PRG files, line endings will be "\r".
 
 ## qr
-	Converts a PTC file into a QR code or QR codes. Default behavior is to save to 
-	
+Converts a PTC file into a QR code or QR codes. Default behavior is to save to the current directory.
+
 # References
-PTCUtilities - https://micutil.com/ptcutilities/top_e.html
-File format information - https://petitcomputer.fandom.com/wiki/PTC_File_Formats
-QR code information - https://gist.github.com/ajc2/25258be3296847bc55cec9e27d13f053
+* PTCUtilities - https://micutil.com/ptcutilities/top_e.html
+* File format information - https://petitcomputer.fandom.com/wiki/PTC_File_Formats
+* QR code information - https://gist.github.com/ajc2/25258be3296847bc55cec9e27d13f053
