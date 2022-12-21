@@ -5,16 +5,52 @@ ptctools - Essentially a terminal version of PTCUtilities
 This tool intends to be a cross-platform replacement for PTCUtilities's PTC file and QR code conversion capabilities.
 This program will not contain an editor - the intended use case is to create files in "normal" formats and convert them as necessary.
 
-This program is a WIP. If something breaks, please create an issue. Please provide the command and any relevant files that failed.
+This program is a WIP. 
+If there is a feature missing you would like to see, please create an issue.
+If something breaks, please create an issue. Please provide the command and any relevant files that failed.
+
+Current feature:
+## encode
+* Convert text to PRG, MEM
+* Convert image to GRP, CHR, COL, 
+* Embed data into GRP, CHR, COL, SCR 
+* Set internal name, file name of output PTC
+* Format detection based on image size
+* Specify palette to encode with
+
+## decode
+* Convert PRG, MEM to text
+* Convert GRP, CHR, COL to image
+* Specify palette to decode with
+
+## qr
+* Convert any .PTC to QR code(s)
+* Auto-merge QR codes into one image
 
 # Setup
+This program is created entirely in Python 3 and relies on the `Pillow` and `qrcode` Python libraries. These can be installed using pip:
+```
+python3 -m pip install Pillow qrcode[PIL]
+```
+
+You will need the default color palettes. These can be copied by executed the following PTC commands and then saving to the SD card.
+```
+SAVE "COL0:COL0"
+SAVE "COL2:COL2"
+```
+Alternatively, you can use the files extracted via the setup of https://github.com/Minxrod/PTC-EmkII. These would be located in the resources/graphics/ subdirectory.
+
 
 ```shell
 git clone https://github.com/Minxrod/ptctools.git
 chmod +x ptctools
+./ptctools decode COL0.ptc --output col_bgsp.png
+./ptctools decode COL2.ptc --output col_grp.png
 ```
 
 # Example usage
+
+## file -> PTC
 ```
 ./ptctools encode program.txt
 ```
@@ -23,15 +59,19 @@ Converts program.txt to a PTC file with internal name PROGRAM and filename PROGR
 ./ptctools encode program.txt --name TEST --output myCoolPTCFile
 ```
 Converts program.txt to a PTC file with internal name TEST and filename myCoolPTCFile.PTC
+
+## PTC -> file
+```
+./ptctools decode PROGRAM.PTC --output myCoolProgram
+```
+Converts PROGRAM.PTC back into a text file, called myCoolProgram.txt.
+
+## PTC -> QRs
 ```
 mkdir qrs
 ./ptctools qr PROGRAM.PTC --output qrs/ --merge
 ```
 Converts PROGRAM.PTC into qr codes stored in the qrs/ directory, and then merges them into one image called PROGRAM#merged.png
-```
-./ptctools decode PROGRAM.PTC --output myCoolProgram
-```
-Converts PROGRAM.PTC back into a text file, called myCoolProgram.txt.
 ```
 ./ptctools encode bgf0.png --name FONT
 ./ptctools qr FONT.PTC
