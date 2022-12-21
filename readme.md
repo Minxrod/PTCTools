@@ -81,3 +81,8 @@ Converts from a common format to a PTC SD formatted file. The output format is g
 --palette FILE
 -p FILE
 	Specify the color palette to use for image conversions, instead of the default palette. Only applies if encoding or decoding an image.
+	
+# References
+PTCUtilities - https://micutil.com/ptcutilities/top_e.html
+File format information - https://petitcomputer.fandom.com/wiki/PTC_File_Formats
+QR code information - https://gist.github.com/ajc2/25258be3296847bc55cec9e27d13f053

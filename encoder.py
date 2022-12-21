@@ -7,9 +7,6 @@ from PIL import Image, ImageDraw, ImageFont
 from ptc_file import PTCFile, to_bytes, md5
 from ptc_file import PRG_TYPE, MEM_TYPE, CHR_TYPE, SCR_TYPE, COL_TYPE, GRP_TYPE
 
-
-CR=ord('\r')
-
 CHARS =  "\0🅐🅑����☺☻⇥★🖛🅻\r��♪♫🆁��🭽🭶🭾🅧🅨⭗�⭢⭠⭡⭣"
 CHARS += "".join([chr(c) for c in range(32,128)])
 CHARS += "◇▘▝▀▖▌▞▛▗▚▐▜▄▙▟█┻┳┣╋┫━┃█┏┓┗┛◢◣◥◤"
@@ -109,6 +106,7 @@ def encode_image(image, type_str, internal_name, palette=None):
 		#TODO do encoding here for type
 	if type_str == CHR_TYPE:
 		return encode_chr(image, internal_name, palette)
+	
 
 
 def encode_graphic(filename, type_str, internal_name, palette=None):
