@@ -9,7 +9,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 # shoutouts to this document here for all of the information
 # https://gist.github.com/ajc2/25258be3296847bc55cec9e27d13f053
-def create_qr(ptc_file, output, merge):
+def create_qr(args):
+	ptc_file = args.source_file
+	output = args.output
+	
 	ptc = PTCFile(file=ptc_file)
 	
 	qrs = qrcode.QRCode(
@@ -55,7 +58,7 @@ def create_qr(ptc_file, output, merge):
 #		img.show()
 #		print(chunk)
 	
-	if merge:
+	if args.merge:
 		wcount = min(5,max_qrs)
 		hcount = ceil(max_qrs/5)
 		

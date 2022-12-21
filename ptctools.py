@@ -11,40 +11,41 @@ parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.4 (
 parser.add_argument("action", choices=["decode","encode","qr"], help="Encode to PTC, decode from PTC, or create QR code from PTC")
 parser.add_argument("source_file", help="Source file for action.")
 
-parser.add_argument("-f", "--format", dest="dest_format", help="Set PTC file output format.")
+parser.add_argument("-f", "--format", dest="force_type", help="Set PTC file output format.")
 parser.add_argument("-m", "--merge", dest="merge", action="store_true", help="Merge generated QRs into one image.")
 parser.add_argument("-n", "--name", dest="internal_name", help="Sets the internal PTC filename.")
-parser.add_argument("-o", "--output", dest="output_name", help="Sets the output filename.")
-parser.add_argument("-p", "--palette", dest="palette_file", help="Set the palette file to use when encoding from an image.")
-parser.add_argument("-t", "--tileset", dest="tileset_file", help="Set the tileset file to use when encoding to SCR.")
+parser.add_argument("-o", "--output", dest="output", help="Sets the output filename.")
+parser.add_argument("-p", "--palette", dest="palette", help="Set the palette file to use when encoding from an image.")
+parser.add_argument("-t", "--tileset", dest="tileset", help="Set the tileset file to use when encoding to SCR.")
 
 args = parser.parse_args()
 print(args)
 
 # get output file name
-if args.output_name:
-	output = args.output_name
+if args.output:
+	output = args.output
 elif args.internal_name:
 	output = args.internal_name
 else:
 	output = encoder.create_internal_name(args.source_file).decode()
+args.output = output
 
 if args.action == "encode":
 	# file -> PTC
 	# --output takes priority over --name takes priority over default originalname.PTC format
 	
-	result = encoder.encode(args.source_file, args.dest_format, args.internal_name, args.palette_file)
-	result.write_file(output)
+	result = encoder.encode(args)
+	result.write_file(args.output)
 	
 	print("Wrote result to PTC file:")
 	print(result)
 elif args.action == "decode":
 	# PTC -> file
 	
-	decoder.decode(args.source_file, output, args.palette_file)
-	print("Decoded "+args.source_file+" to file "+output)
+	decoder.decode(args)
+	print("Decoded "+args.source_file+" to file "+args.output)
 	
 elif args.action == "qr":
 	# file -> QRs
-	qr.create_qr(args.source_file, output, args.merge)
-	print("QRs created and saved to "+output)
+	qr.create_qr(args)
+	print("QRs created and saved to "+args.output)

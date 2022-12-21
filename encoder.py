@@ -32,16 +32,11 @@ def encode_ucs2(data):
 
 	return byte_str
 
-def encode_text(filename, type_str, internal_name):
+def encode_text(args):
+	filename, type_str, internal_name = args.source_file, args.force_type, args.internal_name
+	
 	with open(filename, "r", encoding="utf-8", newline="") as f:
 		data = list(f.read())
-	
-#	i = 0
-#	while i < len(data):
-		# find line ending if not set
-#		if data[i] == '\n':
-#			data[i] = '\r'
-#		i += 1
 	
 	if type_str == PRG_TYPE:
 		try:
@@ -77,14 +72,26 @@ def encode_chr(image, internal_name, palette):
 			# find closest matching palette
 			sub_map = pal_maps[0]
 #			print(tile_cols)
-			for sub in pal_maps:
+			min_diff = 99999999
+			sub_pal = pal[0]
+			for i, sub in enumerate(pal_maps):
 				if tile_cols.issubset(sub): # if sub will work 100% as palette
 					sub_map = sub
 					break
-				elif len(tile_cols.intersection(sub)) > len(tile_cols.intersection(sub_map)): # if sub works partially and better than previous palette
-					sub_map = sub
-					# don't break because there might be a better match
+#				elif len(tile_cols.intersection(sub)) > len(tile_cols.intersection(sub_map)): # if sub works partially and better than previous palette
+#					sub_map = sub
+#					# don't break because there might be a better match
+				else:
+					d = 0
+					for c in tile_cols:
+						close, diff = match_close_color(c, pal[i])
+						d += diff
+					if d < min_diff:
+						min_diff = d
+						sub_map = sub # colors on average were closer
+						sub_pal = pal[i]
 			
+			sub_map = dict(sub_map) # to allow temp modifications for CHR
 			# convert single CHR to data
 			for py in range(0,8):
 				for px in range(0,8,2):
@@ -92,11 +99,36 @@ def encode_chr(image, internal_name, palette):
 					pl = image.getpixel((px+8*cx+1, py+8*cy))
 					
 					#map all unknown colors to transparent
-					data += hex(sub_map[pl] if pl in sub_map else 0)[2] # remove 0x from hex output
-					data += hex(sub_map[ph] if ph in sub_map else 0)[2] # remove 0x from hex output
+					if pl in sub_map:
+						data += hex(sub_map[pl])[2] # remove 0x from hex output
+					else:
+						close, d = match_close_color(pl, sub_pal)
+						sub_map[pl] = close
+						data += hex(sub_map[pl])[2]
+					if ph in sub_map:
+						data += hex(sub_map[ph])[2] # remove 0x from hex output
+					else:
+						close, d = match_close_color(ph, sub_pal)
+						sub_map[ph] = close
+						data += hex(sub_map[ph])[2]
 	data = bytearray.fromhex(data)
 	
 	return PTCFile(data=data, type=CHR_TYPE, name=internal_name)
+
+def match_close_color(p, pal):
+	if p[3] == 0: print(0); return 0, 0 # transparency check
+	diff = lambda c, p: (abs(c[0]-p[0])**2+abs(c[1]-p[1])**2+abs(c[2]-p[2])**2)
+	
+	min_diff = diff(p, pal[0])
+	min_diff_i = 0
+	for i,c in enumerate(pal):
+		c_diff = diff(c, p)
+		if c_diff < min_diff:
+			min_diff = c_diff
+			min_diff_i = i
+	print(p)
+#	print(min_diff_i, min_diff, pal[min_diff_i])
+	return min_diff_i, min_diff
 
 # see https://petitcomputer.fandom.com/wiki/GRP_File_Format_(External)
 # for why there's a staircase of for loops
@@ -115,7 +147,13 @@ def encode_grp(image, internal_name, palette):
 						for px in range(0,8):
 							p = image.getpixel((px+8*cx+64*bx, py+8*cy+64*by))
 							# unknown colors become transparent
-							data.append(pal_map[p] if p in pal_map else 0)
+							if p in pal_map:
+								data.append(pal_map[p])
+							else:
+								close, d = match_close_color(p, pal)
+#								print(d, end="")
+								pal_map[p] = close # save closeness result
+								data.append(close)
 	
 	return PTCFile(data=bytes(data), type=GRP_TYPE, name=internal_name)
 
@@ -139,7 +177,7 @@ def encode_scr(image, internal_name):
 	# how should palettes be implemented?
 	raise NotImplementedError("SCR not yet supported")
 
-def encode_image(image, type_str, internal_name, palette=None):
+def encode_image(image, args):
 	SIZE_TO_TYPE = {
 		(256,64):CHR_TYPE,
 		(256,192):GRP_TYPE,
@@ -148,28 +186,26 @@ def encode_image(image, type_str, internal_name, palette=None):
 		(256,1):COL_TYPE,
 		(1,256):COL_TYPE,
 	}
-	if type_str is None:
-		type_str = SIZE_TO_TYPE[(image.width, image.height)]
-	
-	palette = load_palette(palette, type_str)
+	type_str = args.force_type if args.force_type else SIZE_TO_TYPE[(image.width, image.height)]
+	palette = load_palette(args.palette, type_str)
 	
 	#TODO do encoding here for type
 	if type_str == CHR_TYPE:
-		return encode_chr(image, internal_name, palette)
+		return encode_chr(image, args.internal_name, palette)
 	elif type_str == GRP_TYPE:
-		return encode_grp(image, internal_name, palette)
+		return encode_grp(image, args.internal_name, palette)
 	elif type_str == COL_TYPE:
-		return encode_col(image, internal_name)
+		return encode_col(image, args.internal_name)
 	elif type_str == SCR_TYPE:
-		return encode_scr(image, internal_name)
+		return encode_scr(image, args.internal_name, palette, args.tileset)
 
-def encode_graphic(filename, type_str, internal_name, palette=None):
+def encode_graphic(args):
 	try:
-		img = Image.open(filename)
-		return encode_image(img, type_str, internal_name, palette)
+		img = Image.open(args.source_file)
+		return encode_image(img, args)
 	except PIL.UnidentifiedImageError as e:
 		# not an image format: insert raw data instead
-		if type_str is None:
+		if args.force_type is None:
 			raise Exception("Image format not recognized and output type unspecified")
 		with open(filename, "rb") as f:
 			data = f.read()
@@ -181,31 +217,32 @@ def encode_graphic(filename, type_str, internal_name, palette=None):
 		}
 		
 		# pad zeros for small file, trim for large file
-		data = force_bytes_size(data, TYPE_TO_SIZE[type_str])
+		data = force_bytes_size(data, TYPE_TO_SIZE[args.force_type])
 		
-		return PTCFile(data=data, type=type_str, name=internal_name)
-		
+		return PTCFile(data=data, type=args.force_type, name=args.internal_name)
 
-def encode(filename, force_type=None, internal_name=None, palette=None):
+def encode(args):
+	extension = args.source_file.split(".")[-1]
+	
 	# allow short type names
-	if force_type:
+	if args.force_type:
 		for t in PTC_TYPES:
-			if t[-3:] == force_type.encode():
-				force_type = t
+			if t[-3:] == args.force_type.encode():
+				args.force_type = t
 				break
+	# prepare internal name
+	args.internal_name = create_internal_name(args.source_file) if not args.internal_name else create_internal_name(args.internal_name)
 	
-	extension = filename.split(".")[-1]
-	internal_name = create_internal_name(filename) if not internal_name else create_internal_name(internal_name)
-	
-	if force_type:
-		if force_type == PRG_TYPE or force_type == MEM_TYPE:
-			return encode_text(filename, force_type, internal_name, palette)
+	if args.force_type:
+		if args.force_type == PRG_TYPE or args.force_type == MEM_TYPE:
+			return encode_text(args)
 		else:
-			return encode_graphic(filename, force_type, internal_name, palette)
+			return encode_graphic(args)
 	elif extension in ["txt"]:
-		return encode_text(filename, PRG_TYPE, internal_name, palette)
+		args.force_type = PRG_TYPE
+		return encode_text(args)
 	elif extension in ["png", "bmp", "gif"]:
-		return encode_graphic(filename, force_type, internal_name, palette)
+		return encode_graphic(args)
 	else:
 		raise Exception("Format type not specified and cannot be guessed")
 
