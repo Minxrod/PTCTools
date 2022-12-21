@@ -9,10 +9,7 @@ from ptc_file import PRG_TYPE, MEM_TYPE, CHR_TYPE, SCR_TYPE, COL_TYPE, GRP_TYPE,
 
 CHARS =  "\0🅐🅑����☺☻⇥★🖛🅻\r��♪♫🆁��🭽🭶🭾🅧🅨⭗�⭢⭠⭡⭣"
 CHARS += "".join([chr(c) for c in range(32,128)])
-CHARS += "◇▘▝▀▖▌▞▛▗▚▐▜▄▙▟█┻┳┣╋┫━┃█┏┓┗┛◢◣◥◤"
-CHARS += "～。「」、・ヲァィゥェォャュョッーアイウエオカキクケコサシスセソ"
-CHARS += "タチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン゛゜"
-CHARS += "■●▲▼□○△▽��������♠♥♦♣🯅���▔▏▕▁╱╲╳▒"
+CHARS += "◇▘▝▀▖▌▞▛▗▚▐▜▄▙▟█┻┳┣╋┫━┃█┏┓┗┛◢◣◥◤～。「」、・ヲァィゥェォャュョッーアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン゛゜■●▲▼□○△▽��������♠♥♦♣🯅���▔▏▕▁╱╲╳▒"
 
 MEM_CHARS = "\0\t\n\r ！”＃＄％＆’（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［￥］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～｟ 。「」、・ヲァィゥェォャュョッｰアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン゛゜àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
 
@@ -36,7 +33,7 @@ def encode_ucs2(data):
 			byte_str += c.encode("utf-16le")
 #			byte_str += byte(MEM_CHARS.index(c)) + b'\0'
 		elif c in CHARS:
-			byte_str += byte(ord(c)) + b'\0'
+			byte_str += byte(CHARS.index(c)) + b'\0'
 		else:
 			print(c, c.encode())
 			raise Exception("Unknown character!")
@@ -47,7 +44,7 @@ def encode_text(filename, type_str, internal_name):
 	with open(filename, "r", encoding="utf-8", newline="") as f:
 		data = list(f.read())
 	
-	i = 0
+#	i = 0
 #	while i < len(data):
 		# find line ending if not set
 #		if data[i] == '\n':
@@ -56,7 +53,7 @@ def encode_text(filename, type_str, internal_name):
 	
 	if type_str == PRG_TYPE:
 		try:
-			byte_data = bytes([CHARS.index(c) for c in data])
+			byte_data = bytes([CHARS.index(c) if c in CHARS else MEM_CHARS.index(c) for c in data])
 		except ValueError as e:
 			print("Error: File contains characters not known in PTC character set")
 			raise e
@@ -235,13 +232,12 @@ def encode(filename, force_type=None, internal_name=None):
 		raise Exception("Format type not specified and cannot be guessed")
 
 def decode_text(data):
+	"""
+	Expects list of ints in [0,255] or bytes object
+	"""
 	unicode_str = ""
 	for c in data:
-		cc = ord(c)
-		if cc > 0 and cc < 256:
-			unicode_str += CHARS[cc]
-		elif cc >= 256:
-			unicode_str += c
+		unicode_str += CHARS[c] if CHARS[c] != "�" else MEM_CHARS[c]
 	return unicode_str
 
 def decode(filename, output):
@@ -259,7 +255,7 @@ def decode(filename, output):
 #				print(ptc.data)
 				s = ptc.data[:512].decode("utf-16-le")
 #				s = decode_text(s)
-				print([c for c in s])
+#				print([c for c in s])
 #				print(s, len(s))
 				f.write(s)
 		
