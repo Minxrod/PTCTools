@@ -60,12 +60,24 @@ Converts program.txt to a PTC file with internal name PROGRAM and filename PROGR
 ./ptctools encode program.txt --name TEST --output myCoolPTCFile
 ```
 Converts program.txt to a PTC file with internal name TEST and filename myCoolPTCFile.PTC
+```
+./ptctools encode grp.png --name MYGRP
+```
+Converts a 256x192 image into MYGRP.PTC with internal name MYGRP.
+```
+./ptctools encode sprites.png --name GAMESPR0 --arrangement 2x2
+```
+Converts a 256x64 image into GAMESPR0.PTC, with character data arranged for 16x16 pixel sprites.
 
 ## PTC -> file
 ```
 ./ptctools decode PROGRAM.PTC --output myCoolProgram
 ```
 Converts PROGRAM.PTC back into a text file, called myCoolProgram.txt.
+```
+./ptctools decode SPU0.PTC --arrangement 2x2
+```
+Converts SPU0.PTC into an image file SPU0.png, treating the CHR data as containing size 2x2 sprites.
 
 ## PTC -> QRs
 ```
