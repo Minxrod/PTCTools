@@ -52,7 +52,61 @@ def encode_text(args):
 	
 	return PTCFile(data=byte_data, type=type_str, name=internal_name)
 
-def encode_chr(image, internal_name, palette):
+def determine_palette(image, pal, pal_maps):
+	# determine palette of a single tile
+	tile_cols = set()
+	for py in range(0,8):
+		for px in range(0,8):
+			tile_cols.add(image.getpixel((px, py)))
+	
+	# find closest matching palette
+	sub_map = pal_maps[0]
+#	print(tile_cols)
+	min_diff = 99999999
+	sub_pal = pal[0]
+	for i, sub in enumerate(pal_maps):
+		if tile_cols.issubset(sub): # if sub will work 100% as palette
+			sub_map = sub
+			sub_pal = pal[i]
+			break
+		else:
+			d = 0
+			for c in tile_cols:
+				close, diff = match_close_color(c, pal[i])
+				d += diff
+			if d < min_diff:
+				min_diff = d
+				sub_map = sub # colors on average were closer
+				sub_pal = pal[i]
+	
+	return sub_map, sub_pal
+
+def encode_single_chr(image, sub_map, sub_pal):
+	sub_map = dict(sub_map) # to allow temp modifications for CHR
+	# convert single CHR to data
+	data = ""
+	for py in range(0,8):
+		for px in range(0,8,2):
+			ph = image.getpixel((px, py))
+			pl = image.getpixel((px+1, py))
+			
+			if pl in sub_map:
+				data += hex(sub_map[pl])[2] # remove 0x from hex output
+			else:
+				close, d = match_close_color(pl, sub_pal)
+				sub_map[pl] = close
+				data += hex(sub_map[pl])[2]
+			if ph in sub_map:
+				data += hex(sub_map[ph])[2] # remove 0x from hex output
+			else:
+				close, d = match_close_color(ph, sub_pal)
+				sub_map[ph] = close
+				data += hex(sub_map[ph])[2]
+	return data
+
+
+def encode_chr(image, internal_name, palette, arrangement=None):
+	arrangement = (1,1) if arrangement is None else tuple(int(x) for x in arrangement.split('x'))
 	# prepare palette info
 	pal = palettize(palette)
 	pal = [[(pal[i][0],pal[i][1],pal[i][2],0)]+pal[i+1:i+16] for i in range(0,256,16)] #split into 16 palettes, first color is transparent
@@ -61,56 +115,14 @@ def encode_chr(image, internal_name, palette):
 	# doubled map because (0,0,0) and (0,0,0,X) both may be checked due to differing image transparency
 	# convert data to PTC format
 	data = ""
-	for cy in range(0,8):
-		for cx in range(0,32):
-			# determine palette of a single tile
-			tile_cols = set()
-			for py in range(0,8):
-				for px in range(0,8):
-					tile_cols.add(image.getpixel((px+8*cx, py+8*cy)))
-			
-			# find closest matching palette
-			sub_map = pal_maps[0]
-#			print(tile_cols)
-			min_diff = 99999999
-			sub_pal = pal[0]
-			for i, sub in enumerate(pal_maps):
-				if tile_cols.issubset(sub): # if sub will work 100% as palette
-					sub_map = sub
-					sub_pal = pal[i]
-					break
-#				elif len(tile_cols.intersection(sub)) > len(tile_cols.intersection(sub_map)): # if sub works partially and better than previous palette
-#					sub_map = sub
-#					# don't break because there might be a better match
-				else:
-					d = 0
-					for c in tile_cols:
-						close, diff = match_close_color(c, pal[i])
-						d += diff
-					if d < min_diff:
-						min_diff = d
-						sub_map = sub # colors on average were closer
-						sub_pal = pal[i]
-			
-			sub_map = dict(sub_map) # to allow temp modifications for CHR
-			# convert single CHR to data
-			for py in range(0,8):
-				for px in range(0,8,2):
-					ph = image.getpixel((px+8*cx, py+8*cy))
-					pl = image.getpixel((px+8*cx+1, py+8*cy))
+	for cy in range(0,8,arrangement[1]):
+		for cx in range(0,32,arrangement[0]):
+			for sy in range(0,arrangement[1]):
+				for sx in range(0,arrangement[0]):
+					sub_image = image.crop((8*(cx+sx),8*(cy+sy),8*(cx+sx+1),8*(cy+sy+1)))
+					sub_map, sub_pal = determine_palette(sub_image, pal, pal_maps)
+					data += encode_single_chr(sub_image, sub_map, sub_pal)
 					
-					if pl in sub_map:
-						data += hex(sub_map[pl])[2] # remove 0x from hex output
-					else:
-						close, d = match_close_color(pl, sub_pal)
-						sub_map[pl] = close
-						data += hex(sub_map[pl])[2]
-					if ph in sub_map:
-						data += hex(sub_map[ph])[2] # remove 0x from hex output
-					else:
-						close, d = match_close_color(ph, sub_pal)
-						sub_map[ph] = close
-						data += hex(sub_map[ph])[2]
 	data = bytearray.fromhex(data)
 	
 	return PTCFile(data=data, type=CHR_TYPE, name=internal_name)
@@ -273,7 +285,7 @@ def encode_image(image, args):
 	
 	#TODO do encoding here for type
 	if type_str == CHR_TYPE:
-		return encode_chr(image, args.internal_name, palette)
+		return encode_chr(image, args.internal_name, palette, args.arrangement)
 	elif type_str == GRP_TYPE:
 		return encode_grp(image, args.internal_name, palette)
 	elif type_str == COL_TYPE:

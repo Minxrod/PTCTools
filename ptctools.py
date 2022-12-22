@@ -11,6 +11,7 @@ parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.5 (
 parser.add_argument("action", choices=["decode","encode","qr"], help="Encode to PTC, decode from PTC, or create QR code from PTC")
 parser.add_argument("source_file", help="Source file for action.")
 
+parser.add_argument("-a", "--arrangement", dest="arrangement", action="store", choices=["1x1","1x2","1x4","2x1","2x2","2x4","4x1","4x2","4x4","4x8","8x4","8x8"], help="Sets the arrangement of characters in a CHR image.")
 parser.add_argument("-f", "--format", dest="force_type", help="Set PTC file output format.")
 parser.add_argument("-m", "--merge", dest="merge", action="store_true", help="Merge generated QRs into one image.")
 parser.add_argument("-n", "--name", dest="internal_name", help="Sets the internal PTC filename.")
