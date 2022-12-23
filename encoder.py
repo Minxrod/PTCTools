@@ -60,14 +60,16 @@ def determine_palette(image, pal, pal_maps):
 			tile_cols.add(image.getpixel((px, py)))
 	
 	# find closest matching palette
-	sub_map = pal_maps[0]
 #	print(tile_cols)
 	min_diff = 99999999
+	sub_map = pal_maps[0]
+	sub_i = -1
 	sub_pal = pal[0]
 	for i, sub in enumerate(pal_maps):
 		if tile_cols.issubset(sub): # if sub will work 100% as palette
 			sub_map = sub
 			sub_pal = pal[i]
+			sub_i = i
 			break
 		else:
 			d = 0
@@ -78,8 +80,10 @@ def determine_palette(image, pal, pal_maps):
 				min_diff = d
 				sub_map = sub # colors on average were closer
 				sub_pal = pal[i]
+				sub_i = i
+	print(sub_i)
 	
-	return sub_map, sub_pal
+	return sub_map, sub_pal, sub_i
 
 def encode_single_chr(image, sub_map, sub_pal):
 	sub_map = dict(sub_map) # to allow temp modifications for CHR
@@ -120,7 +124,7 @@ def encode_chr(image, internal_name, palette, arrangement=None):
 			for sy in range(0,arrangement[1]):
 				for sx in range(0,arrangement[0]):
 					sub_image = image.crop((8*(cx+sx),8*(cy+sy),8*(cx+sx+1),8*(cy+sy+1)))
-					sub_map, sub_pal = determine_palette(sub_image, pal, pal_maps)
+					sub_map, sub_pal, _ = determine_palette(sub_image, pal, pal_maps)
 					data += encode_single_chr(sub_image, sub_map, sub_pal)
 					
 	data = bytearray.fromhex(data)
@@ -211,59 +215,54 @@ def encode_scr(image, internal_name, palette, tileset):
 		scr_chr = scr_data[i:i+chr_size]
 		loc = -1
 		rot = 0
+		chr_flip = 0x0
 		while loc == -1:
 			if rot == 0:
 				scr_chunk = scr_chr
-			#TODO: Rotations?
-
-			print(scr_chr, loc)
-			while (loc := chr_data.index(scr_chunk, loc+1)) & 0x001f:
-				print(scr_chr, loc)
-				if loc == -1:
-					break # loop until loc is a multiple of 32 or not found
-			print(scr_chr, loc)
-			if loc == -1:
-				raise NotImplementedError("Error: Tile unidentified, possibly an unimplemented rotation")
-				rot += 1
+			elif rot == 1:
+				# H flip
+				chr_flip = 0x4
+				dat = scr_chr.hex()
+				newdat = ""
+				for j in range(0,64,8):
+					newdat += (dat[j:j+8])[::-1]
+				scr_chunk = bytes.fromhex(newdat)
+			elif rot == 2:
+				# V flip
+				chr_flip = 0x8
+				scr_chunk = bytes.fromhex(scr_chr.hex()[::-1])
+				dat = scr_chunk.hex()
+				newdat = ""
+				for j in range(0,64,8):
+					newdat += (dat[j:j+8])[::-1]
+				scr_chunk = bytes.fromhex(newdat)
+			elif rot == 3:
+				#HV flip
+				chr_flip = 0xc
+				scr_chunk = bytes.fromhex(scr_chr.hex()[::-1])
 			else:
-				break
+				raise Exception("Tile unidentified!")
+			
+			#TODO: Rotations?
+			try:
+				while loc & 0x001f:
+					loc = chr_data.index(scr_chunk, loc+1)
+			except ValueError as e:
+				rot += 1
+				print(scr_chunk.hex(), loc)
 			
 		chr_id = loc // 32
 		
-		# determine palette of a single tile
-		tile_cols = set()
-		for py in range(0,8):
-			for px in range(0,8):
-				j = i // 32
-				by = j // 2048
-				bx = j // 1024 % 2
-				ty = j // 32 % 32
-				tx = j % 32
-				print(j)
-				tile_cols.add(image.getpixel(((px+8*tx+256*bx), py+8*ty+256*by)))
-		
+		j = i // 32
+		by = j // 2048
+		bx = j // 1024 % 2
+		ty = j // 32 % 32
+		tx = j % 32
 		# find closest matching palette
-		sub_map = pal_maps[0]
-#			print(tile_cols)
-		min_diff = 99999999
-		chr_pal = 0
-		for p, sub in enumerate(pal_maps):
-			if tile_cols.issubset(sub): # if sub will work 100% as palette
-				sub_map = sub
-				chr_pal = p
-				break
-			else:
-				d = 0
-				for c in tile_cols:
-					close, diff = match_close_color(c, pal[p])
-					d += diff
-				if d < min_diff:
-					min_diff = d
-					sub_map = sub # colors on average were closer
-					chr_pal = p
+		_, _, chr_pal = determine_palette(image.crop((8*tx+256*bx, 8*ty+256*by, 8*tx+256*bx+8, 8*ty+256*by+8)), pal, pal_maps)
 		
 		data += byte(chr_id & 0x00ff)
-		data += byte((chr_pal << 4) | (chr_id >> 8))
+		data += byte((chr_pal << 4) | chr_flip | (chr_id >> 8))
 	
 	return PTCFile(data=data, type=SCR_TYPE, name=internal_name)
 	# TODO:

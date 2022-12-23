@@ -34,6 +34,7 @@ python3 -m pip install Pillow qrcode[PIL]
 git clone https://github.com/Minxrod/PTCTools.git
 chmod +x ptctools
 ```
+Note that Pillow should be version >=9.1.0, as certain operations (SCR decoding) use features from relatively recent versions.
 
 You will need the default color palettes. These can be copied by executed the following PTC commands and then saving to the SD card.
 ```
