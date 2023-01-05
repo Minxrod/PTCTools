@@ -115,7 +115,7 @@ def encode_chr(image, internal_name, palette, arrangement=None):
 	pal = palettize(palette)
 	pal = [[(pal[i][0],pal[i][1],pal[i][2],0)]+pal[i+1:i+16] for i in range(0,256,16)] #split into 16 palettes, first color is transparent
 	print(pal)
-	pal_maps = [{x:ix for ix, x in enumerate(sub)} | {x[:3]:ix for ix, x in enumerate(sub)} for sub in pal]
+	pal_maps = [{x:ix for ix, x in enumerate(sub) if ix == sub.index(x)} | {x[:3]:ix for ix, x in enumerate(sub) if ix == sub.index(x)} for sub in pal]
 	# doubled map because (0,0,0) and (0,0,0,X) both may be checked due to differing image transparency
 	# convert data to PTC format
 	data = ""
@@ -265,10 +265,6 @@ def encode_scr(image, internal_name, palette, tileset):
 		data += byte((chr_pal << 4) | chr_flip | (chr_id >> 8))
 	
 	return PTCFile(data=data, type=SCR_TYPE, name=internal_name)
-	# TODO:
-	# how should tileset be passed?
-	# how should palettes be implemented?
-	
 
 def encode_image(image, args):
 	SIZE_TO_TYPE = {
@@ -315,7 +311,7 @@ def encode_graphic(args):
 		return PTCFile(data=data, type=args.force_type, name=args.internal_name)
 
 def encode(args):
-	extension = args.source_file.split(".")[-1]
+	extension = args.source_file.split(".")[-1].lower()
 	
 	# allow short type names
 	if args.force_type:
@@ -334,7 +330,7 @@ def encode(args):
 	elif extension in ["txt"]:
 		args.force_type = PRG_TYPE
 		return encode_text(args)
-	elif extension in ["png", "bmp", "gif"]:
+	elif extension in ["png", "bmp"]:
 		return encode_graphic(args)
 	else:
 		raise Exception("Format type not specified and cannot be guessed")
