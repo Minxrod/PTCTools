@@ -81,7 +81,7 @@ def determine_palette(image, pal, pal_maps):
 				sub_map = sub # colors on average were closer
 				sub_pal = pal[i]
 				sub_i = i
-	print(sub_i)
+#	print(sub_i)
 	
 	return sub_map, sub_pal, sub_i
 
@@ -114,7 +114,7 @@ def encode_chr(image, internal_name, palette, arrangement=None):
 	# prepare palette info
 	pal = palettize(palette)
 	pal = [[(pal[i][0],pal[i][1],pal[i][2],0)]+pal[i+1:i+16] for i in range(0,256,16)] #split into 16 palettes, first color is transparent
-	print(pal)
+#	print(pal)
 	pal_maps = [{x:ix for ix, x in enumerate(sub) if ix == sub.index(x)} | {x[:3]:ix for ix, x in enumerate(sub) if ix == sub.index(x)} for sub in pal]
 	# doubled map because (0,0,0) and (0,0,0,X) both may be checked due to differing image transparency
 	# convert data to PTC format
@@ -249,7 +249,7 @@ def encode_scr(image, internal_name, palette, tileset):
 					loc = chr_data.index(scr_chunk, loc+1)
 			except ValueError as e:
 				rot += 1
-				print(scr_chunk.hex(), loc)
+#				print(scr_chunk.hex(), loc)
 			
 		chr_id = loc // 32
 		
