@@ -54,6 +54,7 @@ class PTCFile:
 		else: # PRG type
 			self.package = self._sd_data[PTC_PRG_PACKAGE_HIGH:PTC_PRG_PACKAGE_HIGH+8]
 			self.prg_size = to_number(self._sd_data[PTC_PRG_SIZE:PTC_PRG_SIZE+4])
+			self.prg_data = self._sd_data[PTC_PRG_DATA:PTC_PRG_DATA+self.prg_size]
 			self.data = self._sd_data[PTC_PRG_DATA:]
 	
 	def _from_data(self, data, ptc_type, name):
@@ -71,6 +72,7 @@ class PTCFile:
 		self.filename = (name+b"\0"*8)[:8]
 		if ptc_type == PRG_TYPE:
 			self.package = b"\0"*8
+			self.prg_data = self.data
 			self.prg_size = len(data)
 		self.md5 = md5(MD5_PREFIX + self.get_internal_file())
 	
@@ -105,6 +107,11 @@ class PTCFile:
 			"\nMD5: " + self.md5.hex()
 		)
 		return s
+	
+	def set_package_str(self, package_bits):
+		if package_bits >= 0x200000000000:
+			raise Exception("Invalid package string!")
+		self.package = to_bytes((package_bits & 0x00001fff00000000) >> 32) + to_bytes(package_bits & 0x00000000ffffffff)
 	
 	def get_internal_file(self):
 		if self.type_str == PRG_TYPE:

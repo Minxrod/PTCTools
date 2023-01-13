@@ -92,6 +92,12 @@ Converts PROGRAM.PTC into qr codes stored in the qrs/ directory, and then merges
 ```
 Converts bgf0.png into a PTC file with internal name FONT, and then creates qr codes for it (in the current directory).
 
+## Packaging
+```
+./ptctools pack MYPROG.PTC --package_str 0x100 --data-names MYFONT.PTC
+```
+Packs MYPROG.PTC and MYFONT.PTC together into MYPROG.PTC. Note that by default this will overwrite the original program! To specify a different output, use --name or --output.
+
 # Notes
 
 Encoding and decoding are based on characters that are close to their PTC equivalents in UTF-8.

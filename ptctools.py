@@ -4,11 +4,12 @@ import argparse
 import encoder
 import decoder
 import qr
+import package
 
 parser = argparse.ArgumentParser(prog="ptctools", description="PTC file conversion tools.")
 parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.6 (c) 2022")
 
-parser.add_argument("action", choices=["decode","encode","qr"], help="Encode to PTC, decode from PTC, or create QR code from PTC")
+parser.add_argument("action", choices=["decode","encode","qr", "pack", "unpack"], help="Encode to PTC, decode from PTC, or create QR code from PTC")
 parser.add_argument("source_file", help="Source file for action.")
 
 parser.add_argument("-a", "--arrangement", dest="arrangement", action="store", choices=["1x1","1x2","1x4","2x1","2x2","2x4","4x1","4x2","4x4","4x8","8x4","8x8"], help="Sets the arrangement of characters in a CHR image.")
@@ -18,6 +19,8 @@ parser.add_argument("-n", "--name", dest="internal_name", help="Sets the interna
 parser.add_argument("-o", "--output", dest="output", help="Sets the output filename.")
 parser.add_argument("-p", "--palette", dest="palette", help="Set the palette file to use when encoding from an image.")
 parser.add_argument("-t", "--tileset", dest="tileset", help="Set the tileset file to use when encoding/decoding SCR.")
+parser.add_argument("-s", "--package-str", dest="package_str", help="PTC package string to specify files to pack")
+parser.add_argument("-d", "--data-files", dest="data_names", nargs="*", help="Specify the files to pack or unpack.")
 
 args = parser.parse_args()
 print(args)
@@ -50,3 +53,7 @@ elif args.action == "qr":
 	# file -> QRs
 	qr.create_qr(args)
 	print("QRs created and saved to "+args.output)
+elif args.action == "pack":
+	# PTCs -> PTC
+	package.pack(args)
+	print("Packed to file "+args.output)
