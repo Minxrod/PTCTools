@@ -94,9 +94,14 @@ Converts bgf0.png into a PTC file with internal name FONT, and then creates qr c
 
 ## Packaging
 ```
-./ptctools pack MYPROG.PTC --package_str 0x100 --data-names MYFONT.PTC
+./ptctools pack MYPROG.PTC --package-str 0x100 --data-names MYFONT.PTC
 ```
 Packs MYPROG.PTC and MYFONT.PTC together into MYPROG.PTC. Note that by default this will overwrite the original program! To specify a different output, use --name or --output.
+```
+./ptctools unpack MYPROGP.PTC  --name MYPROG --data-names MYFONT
+```
+Unpacks MYPROGP.PTC to MYPROG.PTC and MYFONT.PTC. Note the use of name - otherwise, MYPROGP would be overwritten with the unpacked version.
+
 
 # Notes
 
@@ -107,19 +112,36 @@ Some characters are not mapped or do not map correctly (like \x00), so decoded f
 
 ## encode
 Converts from a common format to a PTC SD formatted file. The output format is guessed based on the input file.
-*	.txt	->	PRG
-*	.png (256x64)	->	CHR
-*	.png (256x64)	->	GRP
-*	.png (512x512)	->	SCR
-*	.png (16x16)	->	COL
-	
-	To specify the MEM type or to specify the type explicity, use the --format option. If a non-image input file is provided
-	and the output format is forced to be a graphical type, the binary data will be inserted into the PTC file with no conversion.
-	
-	There may be some weirdness with line endings. Make sure input files are using "\r" line ending for best results.
+* .txt	->	PRG
+* .png (256x64)	->	CHR
+* .png (256x64)	->	GRP
+* .png (512x512)	->	SCR
+* .png (16x16)	->	COL
+
+To specify the MEM type or to specify the type explicity, use the --format option. If a non-image input file is provided
+and the output format is forced to be a graphical type, the binary data will be inserted into the PTC file with no conversion.
+
+For PRG types, there may be some weirdness with line endings. Make sure input files are using "\r" line ending, otherwise you'll end up with stars instead of newlines and your program won't work.
+
+### CHR encoding extras
+There are some extra settings that are useful for encoding CHR images.
+
+#### --arrangement [-a]
+If your images are intended to be used for sprites, you can set the --arrangement option to the sprite size to handle the character arranging for you, instead of manually setting up the spritesheet. This is limited to the entire CHR image however, so if you need multiple sprite sizes in one sheet it will still take some manual effort.
+
+#### --palette-block [-b]
+For CHR files, when encoding you can limit the palette further with --palette-block. This splits each palette into smaller blocks, useful if you have duplicate colors and need a specific one to be used. Every division allows the transparent color to be used, in addition to the selected colors. Some divisions will also include the transparent color within the first palette.
+
+Division should be specified as a string of hex digits, where each digit represents the number of colors in a segment. For example,
+```
+./ptctools encode chr.png -b 133333
+```
+would create a palette from each set of three colors (after skipping transparency).
 
 ## decode
 Converts from a PTC file to a common format.
+
+For decoding CHR files, you can specify the output color palette with --color.
 
 Notes:
 For PRG files, line endings will be "\r".

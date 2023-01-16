@@ -64,28 +64,28 @@ def determine_palette(image, pal, pal_maps):
 	min_diff = 99999999
 	sub_map = pal_maps[0]
 	sub_i = -1
-	sub_pal = pal[0]
+#	sub_pal = pal[0]
 	for i, sub in enumerate(pal_maps):
 		if tile_cols.issubset(sub): # if sub will work 100% as palette
 			sub_map = sub
-			sub_pal = pal[i]
+#			sub_pal = pal[i]
 			sub_i = i
 			break
 		else:
 			d = 0
 			for c in tile_cols:
-				close, diff = match_close_color(c, pal[i])
+				close, diff = match_close_color(c, sub)
 				d += diff
 			if d < min_diff:
 				min_diff = d
 				sub_map = sub # colors on average were closer
-				sub_pal = pal[i]
+#				sub_pal = pal[i]
 				sub_i = i
 #	print(sub_i)
 	
-	return sub_map, sub_pal, sub_i
+	return sub_map, sub_i
 
-def encode_single_chr(image, sub_map, sub_pal):
+def encode_single_chr(image, sub_map):
 	sub_map = dict(sub_map) # to allow temp modifications for CHR
 	# convert single CHR to data
 	data = ""
@@ -97,25 +97,50 @@ def encode_single_chr(image, sub_map, sub_pal):
 			if pl in sub_map:
 				data += hex(sub_map[pl])[2] # remove 0x from hex output
 			else:
-				close, d = match_close_color(pl, sub_pal)
-				sub_map[pl] = close
+				close, d = match_close_color(pl, sub_map)
+				sub_map[pl] = sub_map[close]
 				data += hex(sub_map[pl])[2]
 			if ph in sub_map:
 				data += hex(sub_map[ph])[2] # remove 0x from hex output
 			else:
-				close, d = match_close_color(ph, sub_pal)
-				sub_map[ph] = close
+				close, d = match_close_color(ph, sub_map)
+				sub_map[ph] = sub_map[close]
 				data += hex(sub_map[ph])[2]
 	return data
 
+def split_palettes(pal, split_palette):
+	split_palette = [int(c,16) for c in split_palette]
+	split_sum = [sum(split_palette[:i]) for i in range(0,len(split_palette))]
+	
+	pal = [[(pal[i][0],pal[i][1],pal[i][2],0)]+pal[i+1:i+16] for i in range(0,256,16)] #split into 16 palettes, first color is transparent
+	newpal = []
+	pal_maps = [] # list of maps of colors to index
+	for sub_pal in pal:
+		sub2_pal = [sub_pal[0:1] + sub_pal[ofs:ofs+block] for ofs, block in zip(split_sum, split_palette)]
+		# sub2_pal is a list of palettes that can be less than 16 colors
+		newpal.extend(sub2_pal)
+		print(sub2_pal)
+		for sub2, ofs in zip(sub2_pal, split_sum):
+			print(sub2,ofs)
+			pal_maps.append({x:(ix+ofs-1 if ix else ix) for ix, x in enumerate(sub2) if ix == sub2.index(x)})
+			pal_maps[-1] |= {x[:3]:(ix+ofs-1 if ix else ix) for ix, x in enumerate(sub2) if ix == sub2.index(x)}
+			print(pal_maps[-1])
+	pal = newpal
+	return pal, pal_maps
 
-def encode_chr(image, internal_name, palette, arrangement=None):
+
+def encode_chr(image, internal_name, palette, arrangement=None, split_palette=None):
 	arrangement = (1,1) if arrangement is None else tuple(int(x) for x in arrangement.split('x'))
+	split_palette = split_palette if split_palette else "1f"
 	# prepare palette info
 	pal = palettize(palette)
-	pal = [[(pal[i][0],pal[i][1],pal[i][2],0)]+pal[i+1:i+16] for i in range(0,256,16)] #split into 16 palettes, first color is transparent
-#	print(pal)
-	pal_maps = [{x:ix for ix, x in enumerate(sub) if ix == sub.index(x)} | {x[:3]:ix for ix, x in enumerate(sub) if ix == sub.index(x)} for sub in pal]
+	pal, pal_maps = split_palettes(pal, split_palette)
+	
+	#pal_maps = [
+	#	{x:ix for ix, x in enumerate(sub) if ix == sub.index(x)} | 
+	#	{x[:3]:ix for ix, x in enumerate(sub) if ix == sub.index(x)}
+	#	for sub in pal
+	#]
 	# doubled map because (0,0,0) and (0,0,0,X) both may be checked due to differing image transparency
 	# convert data to PTC format
 	data = ""
@@ -124,8 +149,8 @@ def encode_chr(image, internal_name, palette, arrangement=None):
 			for sy in range(0,arrangement[1]):
 				for sx in range(0,arrangement[0]):
 					sub_image = image.crop((8*(cx+sx),8*(cy+sy),8*(cx+sx+1),8*(cy+sy+1)))
-					sub_map, sub_pal, _ = determine_palette(sub_image, pal, pal_maps)
-					data += encode_single_chr(sub_image, sub_map, sub_pal)
+					sub_map, _ = determine_palette(sub_image, pal, pal_maps)
+					data += encode_single_chr(sub_image, sub_map)
 					
 	data = bytearray.fromhex(data)
 	
@@ -135,16 +160,17 @@ def match_close_color(p, pal):
 	#if p[3] == 0: print(0); return 0, 0 # transparency check
 	diff = lambda c, p: (abs(c[0]-p[0])**2+abs(c[1]-p[1])**2+abs(c[2]-p[2])**2)
 	
-	min_diff = diff(p, pal[0])
-	min_diff_i = 0
-	for i,c in enumerate(pal):
+	min_diff = 999999999999
+#	min_diff_i = 0
+	for c in pal:
 		c_diff = diff(c, p)
 		if c_diff < min_diff:
 			min_diff = c_diff
-			min_diff_i = i
+			min_c = c
+#			min_diff_i = i
 #	print(p)
 #	print(min_diff_i, min_diff, pal[min_diff_i])
-	return min_diff_i, min_diff
+	return min_c, min_diff
 
 # see https://petitcomputer.fandom.com/wiki/GRP_File_Format_(External)
 # for why there's a staircase of for loops
@@ -198,7 +224,7 @@ def encode_scr(image, internal_name, palette, tileset):
 	chr_data = b""
 	for i in range(0,tiles.height,64):
 		chr_part_img = tiles.crop((0,i,256,i+64))
-		chr_data += encode_chr(chr_part_img, b"SCR_TILE", palette).data
+		chr_data += encode_chr(chr_part_img, b"SCR_TILE", palette, split_palette=None).data
 	# contains entire tileset
 	
 	scr_data = b""
@@ -259,7 +285,7 @@ def encode_scr(image, internal_name, palette, tileset):
 		ty = j // 32 % 32
 		tx = j % 32
 		# find closest matching palette
-		_, _, chr_pal = determine_palette(image.crop((8*tx+256*bx, 8*ty+256*by, 8*tx+256*bx+8, 8*ty+256*by+8)), pal, pal_maps)
+		_, chr_pal = determine_palette(image.crop((8*tx+256*bx, 8*ty+256*by, 8*tx+256*bx+8, 8*ty+256*by+8)), pal, pal_maps)
 		
 		data += byte(chr_id & 0x00ff)
 		data += byte((chr_pal << 4) | chr_flip | (chr_id >> 8))
@@ -280,7 +306,7 @@ def encode_image(image, args):
 	
 	#TODO do encoding here for type
 	if type_str == CHR_TYPE:
-		return encode_chr(image, args.internal_name, palette, args.arrangement)
+		return encode_chr(image, args.internal_name, palette, args.arrangement, args.block_size)
 	elif type_str == GRP_TYPE:
 		return encode_grp(image, args.internal_name, palette)
 	elif type_str == COL_TYPE:
@@ -296,7 +322,7 @@ def encode_graphic(args):
 		# not an image format: insert raw data instead
 		if args.force_type is None:
 			raise Exception("Image format not recognized and output type unspecified")
-		with open(filename, "rb") as f:
+		with open(args.source_file, "rb") as f:
 			data = f.read()
 		TYPE_TO_SIZE = {
 			CHR_TYPE:8192,

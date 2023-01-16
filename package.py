@@ -39,6 +39,7 @@ def pack(args):
 			if package_types[i] != to_pack.type_str:
 				raise Exception("Provided input PTC data file does not match expected packed type " + package_types[i].decode())
 			package_prg.data += to_pack.type_str + to_pack.data
+			package_prg.size += to_pack.size
 	
 	try:
 		next(files)
@@ -47,3 +48,4 @@ def pack(args):
 		pass
 	
 	package_prg.write_file(args.output)
+	print(package_prg)

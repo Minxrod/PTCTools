@@ -28,9 +28,12 @@ def decode_grp(ptc, output, pal):
 		grp_img.putpixel((px+8*cx+64*bx, py+8*cy+64*by), pal[p])
 	grp_img.save(output+".png")
 
-def decode_chr(ptc, output, pal, arrangement=None):
+def decode_chr(ptc, output, pal, arrangement=None, color=None):
 	ax, ay = (1,1) if arrangement is None else tuple(int(x) for x in arrangement.split('x'))
 	aw, ah = 8*ax, 8*ay
+	
+	# get color palette [0-15] to actual offset into palette
+	color *= 16
 	
 	chr_img = Image.new("RGBA",(256,64))
 	for i, p in enumerate(ptc.data):
@@ -40,8 +43,10 @@ def decode_chr(ptc, output, pal, arrangement=None):
 		sx = i // 32 % ax
 		py = i // 4 % 8
 		px = i % 4
-		chr_img.putpixel((2*px+8*sx+aw*cx, 8*sy+py+ah*cy), pal[p & 0x0f])
-		chr_img.putpixel((2*px+1+8*sx+aw*cx, 8*sy+py+ah*cy), pal[(p & 0xf0) >> 4])
+		if p & 0x0f:
+			chr_img.putpixel((2*px+8*sx+aw*cx, 8*sy+py+ah*cy), pal[color + (p & 0x0f)])
+		if p & 0xf0:
+			chr_img.putpixel((2*px+1+8*sx+aw*cx, 8*sy+py+ah*cy), pal[color + ((p & 0xf0) >> 4)])
 	chr_img.save(output+".png")
 
 def decode_col(ptc, output):
@@ -130,7 +135,7 @@ def decode(args):
 	elif ptc.type_str == GRP_TYPE:
 		decode_grp(ptc, args.output, pal)
 	elif ptc.type_str == CHR_TYPE:
-		decode_chr(ptc, args.output, pal, args.arrangement)
+		decode_chr(ptc, args.output, pal, args.arrangement, int(args.color_offset))
 	elif ptc.type_str == COL_TYPE:
 		decode_col(ptc, args.output)
 	elif ptc.type_str == SCR_TYPE:
