@@ -119,12 +119,12 @@ def split_palettes(pal, split_palette):
 		sub2_pal = [sub_pal[0:1] + sub_pal[ofs:ofs+block] for ofs, block in zip(split_sum, split_palette)]
 		# sub2_pal is a list of palettes that can be less than 16 colors
 		newpal.extend(sub2_pal)
-		print(sub2_pal)
+#		print(sub2_pal)
 		for sub2, ofs in zip(sub2_pal, split_sum):
-			print(sub2,ofs)
+#			print(sub2,ofs)
 			pal_maps.append({x:(ix+ofs-1 if ix else ix) for ix, x in enumerate(sub2) if ix == sub2.index(x)})
 			pal_maps[-1] |= {x[:3]:(ix+ofs-1 if ix else ix) for ix, x in enumerate(sub2) if ix == sub2.index(x)}
-			print(pal_maps[-1])
+#			print(pal_maps[-1])
 	pal = newpal
 	return pal, pal_maps
 
