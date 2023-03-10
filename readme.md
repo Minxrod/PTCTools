@@ -149,6 +149,15 @@ For PRG files, line endings will be "\r".
 ## qr
 Converts a PTC file into a QR code or QR codes. Default behavior is to save to the current directory.
 
+By specifying the --merge option, QR codes will be automatically combined into one image.
+
+## merge
+Merge several QR images into one. Expects the QR images to be all the same size, but should work 
+anyways as long as the first QR is the largest.
+
+Specify the QRs to be combined after --data-files. 
+
+
 # References
 * PTCUtilities - https://micutil.com/ptcutilities/top_e.html
 * File format information - https://petitcomputer.fandom.com/wiki/PTC_File_Formats

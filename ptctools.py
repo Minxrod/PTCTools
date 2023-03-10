@@ -9,7 +9,7 @@ import package
 parser = argparse.ArgumentParser(prog="ptctools", description="PTC file conversion tools.")
 parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.7 (c) 2022")
 
-parser.add_argument("action", choices=["decode","encode","qr", "pack", "unpack"], help="Encode to or decode from PTC, or create QR code from PTC, or pack/unpack PTC files.")
+parser.add_argument("action", choices=["decode","encode","qr", "merge", "pack", "unpack"], help="Encode to or decode from PTC, or create QR code from PTC, or pack/unpack PTC files.")
 parser.add_argument("source_file", help="Source file for action.")
 
 parser.add_argument("-a", "--arrangement", dest="arrangement", action="store", choices=["1x1","1x2","1x4","2x1","2x2","2x4","4x1","4x2","4x4","4x8","8x4","8x8"], help="Sets the arrangement of characters in a CHR image.")
@@ -55,6 +55,10 @@ elif args.action == "qr":
 	# file -> QRs
 	qr.create_qr(args)
 	print("QRs created and saved to "+args.output)
+elif args.action == "merge":
+	# many QRs -> one image
+	qr.merge(args.source_file, args.data_names)
+	print("Merged QRs into "+args.source_file)
 elif args.action == "pack":
 	# PTCs -> PTC
 	package.pack(args)

@@ -59,29 +59,31 @@ def create_qr(args):
 #		print(chunk)
 	
 	if args.merge:
-		wcount = min(5,max_qrs)
-		hcount = ceil(max_qrs/5)
-		
-		img = Image.open(output+"#qr001.png")
-		
-		# this img is from the last QR code above.
-		# (It doesn't matter which one is used, they're all the same size)
-		
-		mergewidth = img.width * wcount
-		mergeheight = img.height * hcount
-		
-		mergeimg = Image.new("RGBA", (mergewidth, mergeheight), (255,255,255,255))
-		mergedraw = ImageDraw.Draw(mergeimg)
-		font = ImageFont.load_default().font
-		
-		for i in range(1,max_qrs+1):
-			img = Image.open(output+"#qr"+format(i, "03d")+".png")
-			x = ((i-1) % 5) * img.width
-			y = ((i-1) // 5) * img.height
-			mergeimg.paste(img, (x, y))
-			mergedraw.text((x + img.width / 2, y + img.height - 15), str(i)+"/"+str(max_qrs), font=font, fill=(0,0,0,255))
+		merge(output+"#merged.png", [output+"#qr"+format(i, "03d")+".png" for i in range(1,max_qrs+1)])
+
+def merge(output, names):
+	wcount = min(5,len(names))
+	hcount = ceil(len(names)/5)
+	
+	img = Image.open(names[0])
+	
+	# this img is from the last QR code above.
+	# (It doesn't matter which one is used, they're all the same size)
+	
+	mergewidth = img.width * wcount
+	mergeheight = img.height * hcount
+	
+	mergeimg = Image.new("RGBA", (mergewidth, mergeheight), (255,255,255,255))
+	mergedraw = ImageDraw.Draw(mergeimg)
+	font = ImageFont.load_default().font
+	
+	for i in range(1,len(names)+1):
+		img = Image.open(names[i-1])
+		x = ((i-1) % 5) * img.width
+		y = ((i-1) // 5) * img.height
+		mergeimg.paste(img, (x, y))
+		mergedraw.text((x + img.width / 2, y + img.height - 15), str(i)+"/"+str(len(names)), font=font, fill=(0,0,0,255))
 #			print("Merging " + str(i))
-			img.close()
-		mergeimg.save(output+"#merged.png")
-		
+		img.close()
+	mergeimg.save(output)
 
