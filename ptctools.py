@@ -23,6 +23,7 @@ parser.add_argument("-s", "--package-str", dest="package_str", help="PTC package
 parser.add_argument("-d", "--data-files", dest="data_names", nargs="*", help="Specify the file names to pack or unpack.")
 parser.add_argument("-c", "--color", dest="color_offset", help="Specify the palette color when decoding CHR resources.")
 parser.add_argument("-b", "--palette-block", dest="block_size", help="Treat each palette as being separated into multiple smaller units.")
+parser.add_argument("-i", "--no-index", dest="no_index", action="store_true", help="Should QR codes be numbered when merged? (Default yes - specify this to disable)")
 
 args = parser.parse_args()
 print(args)
@@ -57,7 +58,7 @@ elif args.action == "qr":
 	print("QRs created and saved to "+args.output)
 elif args.action == "merge":
 	# many QRs -> one image
-	qr.merge(args.source_file, args.data_names)
+	qr.merge(args.source_file, args.data_names, not args.no_index)
 	print("Merged QRs into "+args.source_file)
 elif args.action == "pack":
 	# PTCs -> PTC

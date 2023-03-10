@@ -151,12 +151,15 @@ Converts a PTC file into a QR code or QR codes. Default behavior is to save to t
 
 By specifying the --merge option, QR codes will be automatically combined into one image.
 
+Specify --no-index to not add numbers to a merged QR image.
+
 ## merge
 Merge several QR images into one. Expects the QR images to be all the same size, but should work 
 anyways as long as the first QR is the largest.
 
-Specify the QRs to be combined after --data-files. 
+Specify the QRs to be combined after --data-files.
 
+Specify --no-index to not add numbers to a merged QR image.
 
 # References
 * PTCUtilities - https://micutil.com/ptcutilities/top_e.html

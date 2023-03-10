@@ -59,9 +59,9 @@ def create_qr(args):
 #		print(chunk)
 	
 	if args.merge:
-		merge(output+"#merged.png", [output+"#qr"+format(i, "03d")+".png" for i in range(1,max_qrs+1)])
+		merge(output+"#merged.png", [output+"#qr"+format(i, "03d")+".png" for i in range(1,max_qrs+1)], not args.no_index)
 
-def merge(output, names):
+def merge(output, names, indexed):
 	wcount = min(5,len(names))
 	hcount = ceil(len(names)/5)
 	
@@ -82,7 +82,8 @@ def merge(output, names):
 		x = ((i-1) % 5) * img.width
 		y = ((i-1) // 5) * img.height
 		mergeimg.paste(img, (x, y))
-		mergedraw.text((x + img.width / 2, y + img.height - 15), str(i)+"/"+str(len(names)), font=font, fill=(0,0,0,255))
+		if indexed:
+			mergedraw.text((x + img.width / 2, y + img.height - 15), str(i)+"/"+str(len(names)), font=font, fill=(0,0,0,255))
 #			print("Merging " + str(i))
 		img.close()
 	mergeimg.save(output)
