@@ -226,6 +226,7 @@ def encode_scr(image, internal_name, palette, tileset):
 		chr_part_img = tiles.crop((0,i,256,i+64))
 		chr_data += encode_chr(chr_part_img, b"SCR_TILE", palette, split_palette=None).data
 	# contains entire tileset
+#	print(chr_data)
 	
 	scr_data = b""
 	for y in range(0,image.height,256):
@@ -234,6 +235,8 @@ def encode_scr(image, internal_name, palette, tileset):
 				scr_part_img = image.crop((x,y+cy,x+256,y+cy+64))
 				scr_data += encode_chr(scr_part_img, b"SCR_DATA", palette).data
 	# scr_data contains SCR if it was converted to CHR
+#	print(scr_data)
+	
 	
 	data = b""
 	chr_size = 32
@@ -267,6 +270,8 @@ def encode_scr(image, internal_name, palette, tileset):
 				chr_flip = 0xc
 				scr_chunk = bytes.fromhex(scr_chr.hex()[::-1])
 			else:
+				print(f"""CHR: {i // chr_size}""")
+				print(scr_chr)
 				raise Exception("Tile unidentified!")
 			
 			#TODO: Rotations?
